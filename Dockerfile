@@ -1,9 +1,15 @@
-FROM node:18-alpine AS builder
+# Use Debian-based Node.js image (not Alpine)
+FROM node:18-bullseye-slim
 
+# Install OpenSSL 3.0 and other dependencies
+RUN apt-get update && apt-get install -y \
+    openssl \
+    libssl3 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
 WORKDIR /app
-
-# Install dependencies for native modules
-RUN apk add --no-cache python3 make g++
 
 # Copy package files
 COPY package*.json ./
@@ -12,47 +18,24 @@ COPY prisma ./prisma/
 # Install dependencies
 RUN npm ci
 
-# Copy source code
+# Generate Prisma Client with correct binary
+RUN npx prisma generate
+
+# Copy application code
 COPY . .
 
 # Build TypeScript
 RUN npm run build
 
-# Generate Prisma client
-RUN npm run prisma:generate
-
-# Production stage
-FROM node:18-alpine
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install production dependencies only
-RUN npm ci --only=production
-
-# Copy built files and Prisma schema
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-
 # Create logs directory
 RUN mkdir -p logs
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
-# Change ownership
-RUN chown -R nodejs:nodejs /app
-
-USER nodejs
-
-EXPOSE 3000
+# Expose port (DigitalOcean uses 8080)
+EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+  CMD node -e "require('http').get('http://localhost:8080/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-CMD ["npm", "start"]
+# Start command: run migrations then start server
+CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]

@@ -67,9 +67,13 @@ Click "Edit" and add these:
 ```
 NODE_ENV=production
 PORT=8080
+API_PORT=8080
 
 # Database (get from database dashboard)
 DATABASE_URL=postgresql://doadmin:PASSWORD@HOST:25060/raastaa?sslmode=require
+
+# Prisma binary target (important!)
+PRISMA_CLI_BINARY_TARGETS=debian-openssl-3.0.x
 
 # JWT Secrets (use the ones generated earlier)
 JWT_SECRET=847e4b3de35f2697917f7a0e4e2b853ec05a8a64b84b1398f8356c80ebc35b2b55f143d06fd2043d7ab360058c1fe541d6c79aaff3a6320ea3b60b4e28a9ddf1
