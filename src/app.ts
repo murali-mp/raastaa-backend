@@ -58,7 +58,7 @@ export const createApp = (): Application => {
   app.use('/api/v1/vendors', vendorRoutes);
   app.use('/api/v1/wallet', walletRoutes);
   app.use('/api/v1/challenges', challengeRoutes);
-
+  app.use('/api/v1/admin', adminRoutes);
   // 404 handler
   app.use(notFoundHandler);
 

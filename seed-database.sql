@@ -1,0 +1,138 @@
+-- Seed data for Raastaa Backend - Bangalore Vendors
+-- Run this SQL script in your DigitalOcean PostgreSQL database
+
+-- Insert Locations first
+INSERT INTO locations (id, latitude, longitude, city, area, full_address)
+VALUES
+  -- VV Puram Food Street
+  ('550e8400-e29b-41d4-a716-446655440001'::uuid, 12.9425, 77.5748, 'Bangalore', 'VV Puram', 'VV Puram Food Street, Gandhi Bazaar, Bangalore 560004'),
+  ('550e8400-e29b-41d4-a716-446655440002'::uuid, 12.9428, 77.5745, 'Bangalore', 'VV Puram', 'VV Puram Food Street, Gandhi Bazaar, Bangalore 560004'),
+  
+  -- Koramangala
+  ('550e8400-e29b-41d4-a716-446655440003'::uuid, 12.9352, 77.6245, 'Bangalore', 'Koramangala', '14th Main Road, Koramangala 4th Block, Bangalore 560034'),
+  ('550e8400-e29b-41d4-a716-446655440004'::uuid, 12.9349, 77.6193, 'Bangalore', 'Koramangala', '80 Feet Road, Koramangala 5th Block, Bangalore 560095'),
+  
+  -- Indiranagar
+  ('550e8400-e29b-41d4-a716-446655440005'::uuid, 12.9716, 77.6412, 'Bangalore', 'Indiranagar', '16th Main Road, Indiranagar, Bangalore 560038'),
+  
+  -- Church Street Area
+  ('550e8400-e29b-41d4-a716-446655440006'::uuid, 12.9753, 77.6044, 'Bangalore', 'MG Road', '39 St Marks Road, near Church Street, Bangalore 560001'),
+  ('550e8400-e29b-41d4-a716-446655440007'::uuid, 12.9769, 77.6071, 'Bangalore', 'Residency Road', '5th Cross, Residency Road, Bangalore 560025'),
+  
+  -- Jayanagar/Basavanagudi
+  ('550e8400-e29b-41d4-a716-446655440008'::uuid, 12.9450, 77.5730, 'Bangalore', 'Basavanagudi', '32 Gandhi Bazaar Main Rd, Basavanagudi, Bangalore 560004'),
+  ('550e8400-e29b-41d4-a716-446655440009'::uuid, 12.9404, 77.5828, 'Bangalore', 'Hanumanthnagar', 'Hanumanthnagar, near Lalbagh, Bangalore 560019'),
+  
+  -- MG Road/Brigade Road
+  ('550e8400-e29b-41d4-a716-446655440010'::uuid, 12.9718, 77.6022, 'Bangalore', 'Brigade Road', 'Brigade Road, Bangalore 560025'),
+  
+  -- Malleshwaram
+  ('550e8400-e29b-41d4-a716-446655440011'::uuid, 13.0006, 77.5707, 'Bangalore', 'Malleshwaram', 'Sampige Road, Malleshwaram, Bangalore 560003'),
+  
+  -- HSR Layout
+  ('550e8400-e29b-41d4-a716-446655440012'::uuid, 12.9121, 77.6446, 'Bangalore', 'HSR Layout', '27th Main Road, HSR Layout, Bangalore 560102'),
+  
+  -- Whitefield
+  ('550e8400-e29b-41d4-a716-446655440013'::uuid, 12.9698, 77.7499, 'Bangalore', 'Whitefield', 'Whitefield Main Road, Bangalore 560066'),
+  
+  -- Banashankari
+  ('550e8400-e29b-41d4-a716-446655440014'::uuid, 12.9251, 77.5486, 'Bangalore', 'Banashankari', 'Kanakapura Road, Banashankari, Bangalore 560070'),
+  
+  -- Electronic City
+  ('550e8400-e29b-41d4-a716-446655440015'::uuid, 12.8456, 77.6603, 'Bangalore', 'Electronic City', 'Hosur Road, Electronic City, Bangalore 560100')
+ON CONFLICT (id) DO NOTHING;
+
+-- Insert Vendors
+INSERT INTO vendors (id, location_id, name, description, price_band, is_verified, status, popularity_score)
+VALUES
+  ('660e8400-e29b-41d4-a716-446655440001'::uuid, '550e8400-e29b-41d4-a716-446655440001'::uuid, 
+   'Sri Raghavendra Sweets & Snacks', 
+   'Famous for fresh jalebis, hot vadas, and traditional Karnataka snacks', 
+   'LOW', true, 'ACTIVE', 85.5),
+   
+  ('660e8400-e29b-41d4-a716-446655440002'::uuid, '550e8400-e29b-41d4-a716-446655440002'::uuid, 
+   'Siddappa Donne Biryani', 
+   'Authentic mutton and chicken biryani in traditional donne', 
+   'LOW', true, 'ACTIVE', 92.3),
+   
+  ('660e8400-e29b-41d4-a716-446655440003'::uuid, '550e8400-e29b-41d4-a716-446655440003'::uuid, 
+   'Veena Stores', 
+   'Legendary masala dosa and filter coffee since 1948', 
+   'LOW', true, 'ACTIVE', 94.7),
+   
+  ('660e8400-e29b-41d4-a716-446655440004'::uuid, '550e8400-e29b-41d4-a716-446655440004'::uuid, 
+   'Truffles', 
+   'Popular burgers, shakes, and American comfort food', 
+   'MEDIUM', true, 'ACTIVE', 88.2),
+   
+  ('660e8400-e29b-41d4-a716-446655440005'::uuid, '550e8400-e29b-41d4-a716-446655440005'::uuid, 
+   'Hole in the Wall Cafe', 
+   'Cozy cafe with pancakes, eggs benedict, and great coffee', 
+   'MEDIUM', true, 'ACTIVE', 87.6),
+   
+  ('660e8400-e29b-41d4-a716-446655440006'::uuid, '550e8400-e29b-41d4-a716-446655440006'::uuid, 
+   'Koshys', 
+   'Historic restaurant serving Continental and Indian since 1940', 
+   'MEDIUM', true, 'ACTIVE', 89.4),
+   
+  ('660e8400-e29b-41d4-a716-446655440007'::uuid, '550e8400-e29b-41d4-a716-446655440007'::uuid, 
+   'Shivaji Military Hotel', 
+   'Authentic Karnataka non-veg meals with amazing mutton curry', 
+   'LOW', true, 'ACTIVE', 91.8),
+   
+  ('660e8400-e29b-41d4-a716-446655440008'::uuid, '550e8400-e29b-41d4-a716-446655440008'::uuid, 
+   'Vidyarthi Bhavan', 
+   'Iconic crispy masala dosa and traditional South Indian breakfast', 
+   'LOW', true, 'ACTIVE', 95.2),
+   
+  ('660e8400-e29b-41d4-a716-446655440009'::uuid, '550e8400-e29b-41d4-a716-446655440009'::uuid, 
+   'Brahmins Coffee Bar', 
+   'Legendary idli, vada, and filter coffee since 1965', 
+   'LOW', true, 'ACTIVE', 96.1),
+   
+  ('660e8400-e29b-41d4-a716-446655440010'::uuid, '550e8400-e29b-41d4-a716-446655440010'::uuid, 
+   'Empire Restaurant', 
+   'Famous Mughlai food, especially biryanis and kebabs', 
+   'MEDIUM', true, 'ACTIVE', 90.5),
+   
+  ('660e8400-e29b-41d4-a716-446655440011'::uuid, '550e8400-e29b-41d4-a716-446655440011'::uuid, 
+   'CTR (Central Tiffin Room)', 
+   'Historic spot famous for benne masala dosa (butter dosa)', 
+   'LOW', true, 'ACTIVE', 93.7),
+   
+  ('660e8400-e29b-41d4-a716-446655440012'::uuid, '550e8400-e29b-41d4-a716-446655440012'::uuid, 
+   'Meghana Foods', 
+   'Andhra-style biryani and spicy curries', 
+   'MEDIUM', true, 'ACTIVE', 88.9),
+   
+  ('660e8400-e29b-41d4-a716-446655440013'::uuid, '550e8400-e29b-41d4-a716-446655440013'::uuid, 
+   'Nagarjuna', 
+   'Authentic Andhra cuisine with gongura mutton and biryani', 
+   'MEDIUM', true, 'ACTIVE', 90.1),
+   
+  ('660e8400-e29b-41d4-a716-446655440014'::uuid, '550e8400-e29b-41d4-a716-446655440014'::uuid, 
+   'Punjabi Dhaba', 
+   'North Indian street food, butter chicken, and parathas', 
+   'LOW', true, 'ACTIVE', 84.3),
+   
+  ('660e8400-e29b-41d4-a716-446655440015'::uuid, '550e8400-e29b-41d4-a716-446655440015'::uuid, 
+   'A2B (Adyar Ananda Bhavan)', 
+   'South Indian vegetarian restaurant, sweets and snacks', 
+   'LOW', true, 'ACTIVE', 87.2)
+ON CONFLICT (id) DO NOTHING;
+
+-- Verify the data
+SELECT COUNT(*) as total_locations FROM locations WHERE city = 'Bangalore';
+SELECT COUNT(*) as total_vendors FROM vendors WHERE is_verified = true;
+
+-- Test spatial queries
+SELECT 
+  v.name, 
+  l.area,
+  l.latitude,
+  l.longitude
+FROM vendors v
+JOIN locations l ON v.location_id = l.id
+WHERE l.city = 'Bangalore'
+ORDER BY v.popularity_score DESC
+LIMIT 5;

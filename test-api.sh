@@ -7,17 +7,18 @@ echo ""
 
 # Test 1: Health Check
 echo "1️⃣  Health Check:"
-curl -s "$API_URL/../health" | jq '.'
+curl -s "https://raastaa-app-duuy3.ondigitalocean.app/health" | jq '.'
 echo ""
 
-# Test 2: Signup
+# Test 2: Signup  
 echo "2️⃣  User Signup:"
 SIGNUP_RESPONSE=$(curl -s -X POST "$API_URL/auth/signup" \
   -H "Content-Type: application/json" \
   -d '{
     "email": "test@raastaa.com",
     "password": "Test1234!",
-    "name": "Test User"
+    "username": "testuser",
+    "displayName": "Test User"
   }')
 echo "$SIGNUP_RESPONSE" | jq '.'
 ACCESS_TOKEN=$(echo "$SIGNUP_RESPONSE" | jq -r '.data.tokens.accessToken // empty')
@@ -28,7 +29,7 @@ echo "3️⃣  User Login:"
 LOGIN_RESPONSE=$(curl -s -X POST "$API_URL/auth/login" \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "test@raastaa.com",
+    "emailOrPhone": "test@raastaa.com",
     "password": "Test1234!"
   }')
 echo "$LOGIN_RESPONSE" | jq '.'
@@ -50,17 +51,22 @@ echo "5️⃣  Search Nearby Vendors (Bangalore coordinates):"
 curl -s -X GET "$API_URL/vendors/nearby?latitude=12.9716&longitude=77.5946&radiusKm=5" | jq '.'
 echo ""
 
-# Test 6: Wallet Info (requires auth)
+# Test 6: Search Vendors
+echo "6️⃣  Search Vendors by name:"
+curl -s -X GET "$API_URL/vendors/search?q=chai" | jq '.'
+echo ""
+
+# Test 7: Wallet Info (requires auth)
 if [ ! -z "$ACCESS_TOKEN" ]; then
-  echo "6️⃣  Get Wallet Info (authenticated):"
+  echo "7️⃣  Get Wallet Info (authenticated):"
   curl -s -X GET "$API_URL/wallet" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq '.'
   echo ""
 fi
 
-# Test 7: Get Challenges (requires auth)
+# Test 8: Get Challenges (requires auth)
 if [ ! -z "$ACCESS_TOKEN" ]; then
-  echo "7️⃣  Get Challenges (authenticated):"
+  echo "8️⃣  Get Challenges (authenticated):"
   curl -s -X GET "$API_URL/challenges" \
     -H "Authorization: Bearer $ACCESS_TOKEN" | jq '.'
   echo ""
