@@ -1,10 +1,10 @@
 # Use Debian-based Node.js image (not Alpine)
 FROM node:18-bullseye-slim
 
-# Install OpenSSL 3.0 and other dependencies
+# Install OpenSSL and other dependencies
 RUN apt-get update && apt-get install -y \
     openssl \
-    libssl3 \
+    libssl-dev \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
