@@ -1,0 +1,800 @@
+// This is your Prisma schema file for Raastaa Backend
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [uuidOssp(map: "uuid-ossp"), postgis, pgTrgm(map: "pg_trgm")]
+}
+
+// ============================================================================
+// USERS & AUTHENTICATION
+// ============================================================================
+
+model User {
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  username     String    @unique @db.VarChar(50)
+  email        String?   @unique @db.VarChar(255)
+  phone        String?   @unique @db.VarChar(20)
+  displayName  String?   @map("display_name") @db.VarChar(100)
+  avatarMediaId String?  @map("avatar_media_id") @db.Uuid
+  trustScore   Int       @default(100) @map("trust_score") @db.Integer
+  status       UserStatus @default(ACTIVE)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  // Relations
+  avatarMedia       Media?              @relation("UserAvatar", fields: [avatarMediaId], references: [id])
+  identities        AuthIdentity[]
+  reviews           Review[]
+  feedPosts         FeedPost[]
+  comments          Comment[]
+  visits            Visit[]
+  mediaUploads      Media[]             @relation("MediaUploader")
+  wallet            Wallet?
+  notifications     Notification[]      @relation("NotificationRecipient")
+  sentNotifications Notification[]      @relation("NotificationSender")
+  challengeProgress ChallengeProgress[]
+  followers         Follower[]          @relation("Following")
+  following         Follower[]          @relation("Follower")
+  reports           Report[]            @relation("Reporter")
+  reviewedReports   Report[]            @relation("Reviewer")
+  feedInteractions  FeedInteraction[]
+  reviewInteractions ReviewInteraction[]
+  trustEvents       TrustEvent[]
+  vendorOwnerships  VendorOwnership[]
+  deviceTokens      UserDevice[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([status])
+  @@index([username(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@map("users")
+}
+
+enum UserStatus {
+  ACTIVE @map("active")
+  SUSPENDED @map("suspended")
+  DELETED @map("deleted")
+
+  @@map("user_status")
+}
+
+model AuthIdentity {
+  id             String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  provider       AuthProvider
+  providerUserId String   @map("provider_user_id") @db.VarChar(255)
+  passwordHash   String?  @map("password_hash") @db.VarChar(255)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastLoginAt    DateTime? @map("last_login_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerUserId])
+  @@index([userId])
+  @@map("auth_identities")
+}
+
+enum AuthProvider {
+  EMAIL @map("email")
+  APPLE @map("apple")
+  GOOGLE @map("google")
+
+  @@map("auth_provider")
+}
+
+model UserDevice {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  deviceToken String   @map("device_token") @db.VarChar(255)
+  platform    String   @default("ios") @db.VarChar(10)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, deviceToken])
+  @@index([deviceToken])
+  @@map("user_devices")
+}
+
+// ============================================================================
+// LOCATIONS & VENDORS
+// ============================================================================
+
+model Location {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  latitude    Decimal  @db.Decimal(10, 8)
+  longitude   Decimal  @db.Decimal(11, 8)
+  // geom is auto-generated in PostgreSQL using a generated column
+  geom        Unsupported("geography(Point,4326)")?
+  city        String?  @db.VarChar(100)
+  area        String?  @db.VarChar(100)
+  fullAddress String?  @map("full_address") @db.Text
+  plusCode    String?  @map("plus_code") @db.VarChar(20)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  vendors Vendor[]
+
+  @@index([geom], type: Gist)
+  @@index([city])
+  @@index([area])
+  @@map("locations")
+}
+
+model Vendor {
+  id              String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  locationId      String    @map("location_id") @db.Uuid
+  name            String    @db.VarChar(200)
+  description     String?   @db.Text
+  priceBand       PriceBand? @map("price_band")
+  isVerified      Boolean   @default(false) @map("is_verified")
+  status          VendorStatus @default(ACTIVE)
+  popularityScore Decimal   @default(0.0) @map("popularity_score") @db.Decimal(5, 2)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  location          Location             @relation(fields: [locationId], references: [id])
+  operationalInfo   VendorOperationalInfo?
+  tags              VendorTag[]
+  menuItems         MenuItem[]
+  reviews           Review[]
+  visits            Visit[]
+  feedPosts         FeedPost[]
+  ownerships        VendorOwnership[]
+
+  @@index([locationId])
+  @@index([status])
+  @@index([popularityScore(sort: Desc)])
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([isVerified])
+  @@map("vendors")
+}
+
+enum VendorStatus {
+  ACTIVE @map("active")
+  PENDING @map("pending")
+  SUSPENDED @map("suspended")
+  CLOSED @map("closed")
+
+  @@map("vendor_status")
+}
+
+enum PriceBand {
+  LOW @map("$")
+  MEDIUM @map("$$")
+  HIGH @map("$$$")
+  PREMIUM @map("$$$$")
+
+  @@map("price_band")
+}
+
+model VendorOperationalInfo {
+  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  vendorId     String   @unique @map("vendor_id") @db.Uuid
+  openingHours Json?    @map("opening_hours")
+  contactPhone String?  @map("contact_phone") @db.VarChar(20)
+  contactEmail String?  @map("contact_email") @db.VarChar(255)
+  websiteUrl   String?  @map("website_url") @db.VarChar(500)
+  socialLinks  Json?    @map("social_links")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@map("vendor_operational_info")
+}
+
+model VendorOwnership {
+  id         String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  vendorId   String   @map("vendor_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  role       OwnershipRole @default(OWNER)
+  verified   Boolean  @default(false)
+  claimedAt  DateTime @default(now()) @map("claimed_at") @db.Timestamptz(6)
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([vendorId, userId])
+  @@index([vendorId])
+  @@index([userId])
+  @@map("vendor_ownership")
+}
+
+enum OwnershipRole {
+  OWNER @map("owner")
+  MANAGER @map("manager")
+  STAFF @map("staff")
+
+  @@map("ownership_role")
+}
+
+// ============================================================================
+// TAGS & CATEGORIZATION
+// ============================================================================
+
+model Tag {
+  id           String      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name         String      @unique @db.VarChar(50)
+  category     TagCategory
+  displayOrder Int         @default(0) @map("display_order")
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  vendors VendorTag[]
+
+  @@index([category])
+  @@map("tags")
+}
+
+enum TagCategory {
+  CUISINE @map("cuisine")
+  VIBE @map("vibe")
+  FEATURE @map("feature")
+  DIETARY @map("dietary")
+
+  @@map("tag_category")
+}
+
+model VendorTag {
+  vendorId  String   @map("vendor_id") @db.Uuid
+  tagId     String   @map("tag_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([vendorId, tagId])
+  @@index([vendorId])
+  @@index([tagId])
+  @@map("vendor_tags")
+}
+
+// ============================================================================
+// MENU SYSTEM
+// ============================================================================
+
+model MenuItem {
+  id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  vendorId    String   @map("vendor_id") @db.Uuid
+  name        String   @db.VarChar(200)
+  description String?  @db.Text
+  priceMin    Decimal? @map("price_min") @db.Decimal(10, 2)
+  priceMax    Decimal? @map("price_max") @db.Decimal(10, 2)
+  currency    String   @default("INR") @db.VarChar(3)
+  isAvailable Boolean  @default(true) @map("is_available")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@index([vendorId])
+  @@index([isAvailable])
+  @@map("menu_items")
+}
+
+// ============================================================================
+// REVIEWS & RATINGS
+// ============================================================================
+
+model Review {
+  id           String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  vendorId     String       @map("vendor_id") @db.Uuid
+  userId       String       @map("user_id") @db.Uuid
+  visitId      String?      @map("visit_id") @db.Uuid
+  headline     String?      @db.VarChar(200)
+  body         String?      @db.Text
+  overallScore Int          @map("overall_score") @db.Integer
+  status       ReviewStatus @default(VISIBLE)
+  helpfulCount Int          @default(0) @map("helpful_count")
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+  visit  Visit? @relation(fields: [visitId], references: [id])
+  ratings      ReviewRating[]
+  interactions ReviewInteraction[]
+
+  @@unique([userId, vendorId])
+  @@index([vendorId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@index([helpfulCount(sort: Desc)])
+  @@map("reviews")
+}
+
+enum ReviewStatus {
+  VISIBLE @map("visible")
+  HIDDEN @map("hidden")
+  FLAGGED @map("flagged")
+
+  @@map("review_status")
+}
+
+model ReviewRating {
+  id        String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  reviewId  String          @map("review_id") @db.Uuid
+  dimension RatingDimension
+  score     Int             @db.Integer
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@unique([reviewId, dimension])
+  @@index([reviewId])
+  @@map("review_ratings")
+}
+
+enum RatingDimension {
+  FOOD @map("food")
+  SERVICE @map("service")
+  AMBIENCE @map("ambience")
+  VALUE @map("value")
+
+  @@map("rating_dimension")
+}
+
+model ReviewInteraction {
+  id              String          @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  reviewId        String          @map("review_id") @db.Uuid
+  userId          String          @map("user_id") @db.Uuid
+  interactionType InteractionType @map("interaction_type")
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@unique([reviewId, userId])
+  @@index([reviewId])
+  @@index([userId])
+  @@map("review_interactions")
+}
+
+enum InteractionType {
+  HELPFUL @map("helpful")
+  NOT_HELPFUL @map("not_helpful")
+
+  @@map("interaction_type")
+}
+
+// ============================================================================
+// VISITS & VERIFICATION
+// ============================================================================
+
+model Visit {
+  id                 String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId             String             @map("user_id") @db.Uuid
+  vendorId           String             @map("vendor_id") @db.Uuid
+  visitedAt          DateTime           @default(now()) @map("visited_at") @db.Timestamptz(6)
+  isVerified         Boolean            @default(false) @map("is_verified")
+  verificationMethod VerificationMethod? @map("verification_method")
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user     User          @relation(fields: [userId], references: [id])
+  vendor   Vendor        @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  reviews  Review[]
+  evidence VisitEvidence[]
+
+  @@index([userId])
+  @@index([vendorId])
+  @@index([visitedAt(sort: Desc)])
+  @@index([isVerified])
+  @@map("visits")
+}
+
+enum VerificationMethod {
+  GPS @map("gps")
+  RECEIPT @map("receipt")
+  QR_CODE @map("qr_code")
+  PHOTO @map("photo")
+
+  @@map("verification_method")
+}
+
+model VisitEvidence {
+  id           String       @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  visitId      String       @map("visit_id") @db.Uuid
+  evidenceType EvidenceType @map("evidence_type")
+  data         Json
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  visit Visit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+
+  @@index([visitId])
+  @@map("visit_evidence")
+}
+
+enum EvidenceType {
+  GPS_LOG @map("gps_log")
+  RECEIPT_IMAGE @map("receipt_image")
+  PHOTO @map("photo")
+  QR_SCAN @map("qr_scan")
+
+  @@map("evidence_type")
+}
+
+// ============================================================================
+// MEDIA MANAGEMENT
+// ============================================================================
+
+model Media {
+  id               String            @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  uploaderId       String            @map("uploader_id") @db.Uuid
+  mediaType        MediaType         @map("media_type")
+  url              String            @db.VarChar(1000)
+  thumbnailUrl     String?           @map("thumbnail_url") @db.VarChar(1000)
+  fileSizeBytes    BigInt?           @map("file_size_bytes")
+  mimeType         String?           @map("mime_type") @db.VarChar(50)
+  width            Int?
+  height           Int?
+  moderationStatus ModerationStatus  @default(PENDING) @map("moderation_status")
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  uploader     User           @relation("MediaUploader", fields: [uploaderId], references: [id])
+  userAvatars  User[]         @relation("UserAvatar")
+  feedPosts    FeedPostMedia[]
+
+  @@index([uploaderId])
+  @@index([moderationStatus])
+  @@index([createdAt(sort: Desc)])
+  @@map("media")
+}
+
+enum MediaType {
+  IMAGE @map("image")
+  VIDEO @map("video")
+
+  @@map("media_type")
+}
+
+enum ModerationStatus {
+  PENDING @map("pending")
+  APPROVED @map("approved")
+  REJECTED @map("rejected")
+
+  @@map("moderation_status")
+}
+
+// ============================================================================
+// SOCIAL FEATURES & FEED
+// ============================================================================
+
+model Follower {
+  followerId  String   @map("follower_id") @db.Uuid
+  followingId String   @map("following_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  follower  User @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@map("followers")
+}
+
+model FeedPost {
+  id           String     @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  authorId     String     @map("author_id") @db.Uuid
+  vendorId     String?    @map("vendor_id") @db.Uuid
+  postType     PostType   @map("post_type")
+  body         String?    @db.Text
+  status       PostStatus @default(VISIBLE)
+  likeCount    Int        @default(0) @map("like_count")
+  commentCount Int        @default(0) @map("comment_count")
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  author       User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  vendor       Vendor?           @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  media        FeedPostMedia[]
+  interactions FeedInteraction[]
+  comments     Comment[]
+
+  @@index([authorId])
+  @@index([vendorId])
+  @@index([createdAt(sort: Desc)])
+  @@index([status])
+  @@index([postType])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("feed_posts")
+}
+
+enum PostType {
+  REVIEW @map("review")
+  TIP @map("tip")
+  PHOTO @map("photo")
+  CHECKIN @map("checkin")
+
+  @@map("post_type")
+}
+
+enum PostStatus {
+  VISIBLE @map("visible")
+  HIDDEN @map("hidden")
+  FLAGGED @map("flagged")
+
+  @@map("post_status")
+}
+
+model FeedPostMedia {
+  postId    String   @map("post_id") @db.Uuid
+  mediaId   String   @map("media_id") @db.Uuid
+  sortOrder Int      @default(0) @map("sort_order")
+
+  post  FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  media Media    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@id([postId, mediaId])
+  @@index([postId])
+  @@map("feed_post_media")
+}
+
+model FeedInteraction {
+  id              String              @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  postId          String              @map("post_id") @db.Uuid
+  userId          String              @map("user_id") @db.Uuid
+  interactionType FeedInteractionType @map("interaction_type")
+  createdAt       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  post FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId, interactionType])
+  @@index([postId])
+  @@index([userId, interactionType])
+  @@map("feed_interactions")
+}
+
+enum FeedInteractionType {
+  LIKE @map("like")
+  SAVE @map("save")
+  SHARE @map("share")
+
+  @@map("feed_interaction_type")
+}
+
+model Comment {
+  id        String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  postId    String        @map("post_id") @db.Uuid
+  authorId  String        @map("author_id") @db.Uuid
+  body      String        @db.Text
+  status    CommentStatus @default(VISIBLE)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  post   FeedPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@index([authorId])
+  @@index([createdAt(sort: Asc)])
+  @@map("comments")
+}
+
+enum CommentStatus {
+  VISIBLE @map("visible")
+  HIDDEN @map("hidden")
+  FLAGGED @map("flagged")
+
+  @@map("comment_status")
+}
+
+// ============================================================================
+// WALLET & GAMIFICATION
+// ============================================================================
+
+model Wallet {
+  id        String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId    String   @unique @map("user_id") @db.Uuid
+  balance   Int      @default(0)
+  currency  String   @default("points") @db.VarChar(10)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions WalletTransaction[]
+
+  @@index([userId])
+  @@map("wallets")
+}
+
+model WalletTransaction {
+  id            String             @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  walletId      String             @map("wallet_id") @db.Uuid
+  amount        Int
+  reason        TransactionReason
+  referenceType String?            @map("reference_type") @db.VarChar(50)
+  referenceId   String?            @map("reference_id") @db.Uuid
+  balanceAfter  Int                @map("balance_after")
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@unique([walletId, referenceType, referenceId])
+  @@index([walletId])
+  @@index([createdAt(sort: Desc)])
+  @@index([referenceType, referenceId])
+  @@map("wallet_transactions")
+}
+
+enum TransactionReason {
+  REVIEW_BONUS @map("review_bonus")
+  VISIT_REWARD @map("visit_reward")
+  REFERRAL @map("referral")
+  CHALLENGE_COMPLETE @map("challenge_complete")
+  ADJUSTMENT @map("adjustment")
+  REDEMPTION @map("redemption")
+
+  @@map("transaction_reason")
+}
+
+model Challenge {
+  id            String        @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  title         String        @db.VarChar(200)
+  description   String?       @db.Text
+  challengeType ChallengeType @map("challenge_type")
+  targetCount   Int           @map("target_count")
+  rewardPoints  Int           @map("reward_points")
+  startsAt      DateTime?     @map("starts_at") @db.Timestamptz(6)
+  endsAt        DateTime?     @map("ends_at") @db.Timestamptz(6)
+  isActive      Boolean       @default(true) @map("is_active")
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  progress ChallengeProgress[]
+
+  @@index([isActive, endsAt])
+  @@index([challengeType])
+  @@map("challenges")
+}
+
+enum ChallengeType {
+  VISIT_COUNT @map("visit_count")
+  REVIEW_COUNT @map("review_count")
+  TAG_EXPLORER @map("tag_explorer")
+  STREAK @map("streak")
+
+  @@map("challenge_type")
+}
+
+model ChallengeProgress {
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  challengeId  String    @map("challenge_id") @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  currentCount Int       @default(0) @map("current_count")
+  isCompleted  Boolean   @default(false) @map("is_completed")
+  completedAt  DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId])
+  @@index([userId])
+  @@index([challengeId])
+  @@index([isCompleted])
+  @@map("challenge_progress")
+}
+
+// ============================================================================
+// NOTIFICATIONS
+// ============================================================================
+
+model Notification {
+  id               String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId           String           @map("user_id") @db.Uuid
+  notificationType NotificationType @map("notification_type")
+  fromUserId       String?          @map("from_user_id") @db.Uuid
+  title            String           @db.VarChar(200)
+  body             String?          @db.Text
+  actionId         String?          @map("action_id") @db.Uuid
+  actionType       String?          @map("action_type") @db.VarChar(30)
+  isRead           Boolean          @default(false) @map("is_read")
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user     User  @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  fromUser User? @relation("NotificationSender", fields: [fromUserId], references: [id], onDelete: SetNull)
+
+  @@index([userId, isRead, createdAt(sort: Desc)])
+  @@index([actionType, actionId])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  LIKE @map("like")
+  COMMENT @map("comment")
+  FOLLOW @map("follow")
+  ACHIEVEMENT @map("achievement")
+  TIP @map("tip")
+  REVIEW_RESPONSE @map("review_response")
+
+  @@map("notification_type")
+}
+
+// ============================================================================
+// MODERATION & TRUST
+// ============================================================================
+
+model Report {
+  id                 String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  reporterId         String           @map("reporter_id") @db.Uuid
+  reportedEntityType ReportEntityType @map("reported_entity_type")
+  reportedEntityId   String           @map("reported_entity_id") @db.Uuid
+  reason             ReportReason
+  details            String?          @db.Text
+  status             ReportStatus     @default(OPEN)
+  reviewedBy         String?          @map("reviewed_by") @db.Uuid
+  reviewedAt         DateTime?        @map("reviewed_at") @db.Timestamptz(6)
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  reporter User  @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reviewer User? @relation("Reviewer", fields: [reviewedBy], references: [id])
+
+  @@index([reporterId])
+  @@index([reportedEntityType, reportedEntityId])
+  @@index([status])
+  @@map("reports")
+}
+
+enum ReportEntityType {
+  REVIEW @map("review")
+  POST @map("post")
+  COMMENT @map("comment")
+  USER @map("user")
+  MEDIA @map("media")
+
+  @@map("report_entity_type")
+}
+
+enum ReportReason {
+  SPAM @map("spam")
+  INAPPROPRIATE @map("inappropriate")
+  FAKE @map("fake")
+  HARASSMENT @map("harassment")
+  OTHER @map("other")
+
+  @@map("report_reason")
+}
+
+enum ReportStatus {
+  OPEN @map("open")
+  UNDER_REVIEW @map("under_review")
+  RESOLVED @map("resolved")
+  DISMISSED @map("dismissed")
+
+  @@map("report_status")
+}
+
+model TrustEvent {
+  id            String         @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId        String         @map("user_id") @db.Uuid
+  eventType     TrustEventType @map("event_type")
+  impact        Int
+  referenceType String?        @map("reference_type") @db.VarChar(30)
+  referenceId   String?        @map("reference_id") @db.Uuid
+  notes         String?        @db.Text
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("trust_events")
+}
+
+enum TrustEventType {
+  VERIFIED_VISIT @map("verified_visit")
+  HELPFUL_REVIEW @map("helpful_review")
+  REPORT_UPHELD @map("report_upheld")
+  REPORT_DISMISSED @map("report_dismissed")
+  CONTENT_REMOVED @map("content_removed")
+  WARNING_ISSUED @map("warning_issued")
+
+  @@map("trust_event_type")
+}
