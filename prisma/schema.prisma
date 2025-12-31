@@ -50,6 +50,7 @@ model User {
   trustEvents       TrustEvent[]
   vendorOwnerships  VendorOwnership[]
   deviceTokens      UserDevice[]
+  expeditions       Expedition[]
 
   @@index([email])
   @@index([phone])
@@ -146,6 +147,7 @@ model Vendor {
   visits            Visit[]
   feedPosts         FeedPost[]
   ownerships        VendorOwnership[]
+  expeditionStops   ExpeditionStop[]
 
   @@index([locationId])
   @@index([status])
@@ -684,6 +686,64 @@ model ChallengeProgress {
   @@index([challengeId])
   @@index([isCompleted])
   @@map("challenge_progress")
+}
+
+// ============================================================================
+// USER EXPEDITIONS (User-created food trails)
+// ============================================================================
+
+model Expedition {
+  id             String           @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  name           String           @db.VarChar(200)
+  expeditionType ExpeditionType   @map("expedition_type")
+  notes          String?          @db.Text
+  targetDate     DateTime?        @map("target_date") @db.Timestamptz(6)
+  status         ExpeditionStatus @default(ACTIVE)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  completedAt    DateTime?        @map("completed_at") @db.Timestamptz(6)
+
+  user   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stops  ExpeditionStop[]
+
+  @@index([userId, status])
+  @@index([createdAt(sort: Desc)])
+  @@map("expeditions")
+}
+
+model ExpeditionStop {
+  id           String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  expeditionId String    @map("expedition_id") @db.Uuid
+  vendorId     String    @map("vendor_id") @db.Uuid
+  sortOrder    Int       @map("sort_order")
+  isVisited    Boolean   @default(false) @map("is_visited")
+  visitedAt    DateTime? @map("visited_at") @db.Timestamptz(6)
+
+  expedition Expedition @relation(fields: [expeditionId], references: [id], onDelete: Cascade)
+  vendor     Vendor     @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@unique([expeditionId, vendorId])
+  @@index([expeditionId, sortOrder])
+  @@map("expedition_stops")
+}
+
+enum ExpeditionType {
+  FOOD_TRAIL   @map("food_trail")
+  CUISINE_QUEST @map("cuisine_quest")
+  NIGHT_CRAWL  @map("night_crawl")
+  BUDGET_RUN   @map("budget_run")
+  CUSTOM       @map("custom")
+
+  @@map("expedition_type")
+}
+
+enum ExpeditionStatus {
+  ACTIVE    @map("active")
+  COMPLETED @map("completed")
+  CANCELLED @map("cancelled")
+
+  @@map("expedition_status")
 }
 
 // ============================================================================

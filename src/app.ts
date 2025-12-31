@@ -16,6 +16,7 @@ import challengeRoutes from './routes/challenge.routes';
 import postRoutes from './routes/post.routes';
 import tagRoutes from './routes/tag.routes';
 import visitRoutes from './routes/visit.routes';
+import expeditionRoutes from './routes/expedition.routes';
 
 export const createApp = (): Application => {
   const app = express();
@@ -64,6 +65,8 @@ export const createApp = (): Application => {
   app.use('/api/v1/posts', postRoutes);
   app.use('/api/v1/tags', tagRoutes);
   app.use('/api/v1/visits', visitRoutes);
+  app.use('/api/v1/expeditions', expeditionRoutes);
+
   // 404 handler
   app.use(notFoundHandler);
 
