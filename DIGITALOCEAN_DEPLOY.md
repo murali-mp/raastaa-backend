@@ -69,18 +69,18 @@ PORT=8080
 # Database (get from database dashboard)
 DATABASE_URL=postgresql://doadmin:PASSWORD@HOST:25060/raastaa?sslmode=require
 
-# Redis (get from Redis dashboard, or skip if not using)
-REDIS_URL=rediss://default:PASSWORD@HOST:25061
-
-# JWT Secrets (generate secure ones)
-JWT_SECRET=<generate-64-char-random-string>
-JWT_REFRESH_SECRET=<generate-64-char-random-string>
+# JWT Secrets (use the ones generated earlier)
+JWT_SECRET=847e4b3de35f2697917f7a0e4e2b853ec05a8a64b84b1398f8356c80ebc35b2b55f143d06fd2043d7ab360058c1fe541d6c79aaff3a6320ea3b60b4e28a9ddf1
+JWT_REFRESH_SECRET=a32b91abdd919f98ef3f574cf7e1ee8e9a828fab1034326007e34d27b494a90027b74b18f48908fba56fc58436b606d97a1a6e53ca9fd60e8570522eebeadca4
 
 # CORS
 CORS_ORIGINS=*
 
 # Logging
 LOG_LEVEL=info
+
+# Redis (optional - only add if you created Redis database)
+# REDIS_URL=rediss://default:PASSWORD@HOST:25061
 ```
 
 ### Generate JWT Secrets
