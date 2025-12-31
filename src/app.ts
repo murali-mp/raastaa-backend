@@ -9,6 +9,10 @@ import { apiRateLimiter } from './middlewares/rateLimit.middleware';
 
 // Import routes
 import authRoutes from './routes/auth.routes';
+import userRoutes from './routes/user.routes';
+import vendorRoutes from './routes/vendor.routes';
+import walletRoutes from './routes/wallet.routes';
+import challengeRoutes from './routes/challenge.routes';
 
 export const createApp = (): Application => {
   const app = express();
@@ -50,6 +54,10 @@ export const createApp = (): Application => {
 
   // API Routes
   app.use('/api/v1/auth', authRoutes);
+  app.use('/api/v1/users', userRoutes);
+  app.use('/api/v1/vendors', vendorRoutes);
+  app.use('/api/v1/wallet', walletRoutes);
+  app.use('/api/v1/challenges', challengeRoutes);
 
   // 404 handler
   app.use(notFoundHandler);
