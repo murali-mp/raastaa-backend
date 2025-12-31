@@ -33,6 +33,14 @@ services:
       - key: LOG_LEVEL
         value: info
 
+  # Redis
+  - type: redis
+    name: raastaa-redis
+    region: singapore
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []
+
 databases:
   # PostgreSQL with PostGIS
   - name: raastaa-db
@@ -41,10 +49,4 @@ databases:
     user: raastaa
     region: singapore
     postgresMajorVersion: 15
-    # PostGIS will be installed via migration
 
-  # Redis
-  - name: raastaa-redis
-    plan: starter  # Free tier available
-    region: singapore
-    maxmemoryPolicy: allkeys-lru
