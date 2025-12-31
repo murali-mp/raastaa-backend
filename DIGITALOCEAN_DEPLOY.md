@@ -50,13 +50,15 @@ Once database is ready:
 
 **Build Command:**
 ```bash
-npm install && npx prisma generate && npx prisma migrate deploy
+npm ci && npx prisma generate && npm run build
 ```
 
 **Run Command:**
 ```bash
-npm start
+npx prisma migrate deploy && npm start
 ```
+
+> **Note:** The run command first applies database migrations, then starts the server.
 
 **Environment Variables:**
 
