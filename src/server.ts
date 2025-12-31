@@ -7,7 +7,7 @@ import { db } from './config/database';
 import { redis } from './config/redis';
 
 const PORT = parseInt(process.env.API_PORT || '3000', 10);
-const HOST = process.env.API_HOST || 'localhost';
+const HOST = process.env.API_HOST || '0.0.0.0';
 
 const startServer = async () => {
   try {
