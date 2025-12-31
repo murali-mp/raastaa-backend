@@ -33,7 +33,7 @@ export class VendorService {
 
     // Build where clause
     const where: Prisma.VendorWhereInput = {
-      status: 'active',
+      status: 'ACTIVE',
       location: {
         latitude: {
           gte: bbox.minLat,
@@ -145,7 +145,7 @@ export class VendorService {
     const { tags = [], priceBands = [], city, limit = 20, offset = 0 } = options;
 
     const where: Prisma.VendorWhereInput = {
-      status: 'active',
+      status: 'ACTIVE',
       OR: [
         {
           name: {
@@ -264,7 +264,7 @@ export class VendorService {
    */
   async getFeatured(city?: string, limit: number = 10) {
     const where: Prisma.VendorWhereInput = {
-      status: 'active',
+      status: 'ACTIVE',
       isVerified: true,
     };
 
