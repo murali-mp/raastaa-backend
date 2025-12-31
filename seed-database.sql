@@ -48,77 +48,77 @@ VALUES
   ('660e8400-e29b-41d4-a716-446655440001'::uuid, '550e8400-e29b-41d4-a716-446655440001'::uuid, 
    'Sri Raghavendra Sweets & Snacks', 
    'Famous for fresh jalebis, hot vadas, and traditional Karnataka snacks', 
-   'LOW', true, 'ACTIVE', 85.5),
+   '$', true, 'active', 85.5),
    
   ('660e8400-e29b-41d4-a716-446655440002'::uuid, '550e8400-e29b-41d4-a716-446655440002'::uuid, 
    'Siddappa Donne Biryani', 
    'Authentic mutton and chicken biryani in traditional donne', 
-   'LOW', true, 'ACTIVE', 92.3),
+   '$', true, 'active', 92.3),
    
   ('660e8400-e29b-41d4-a716-446655440003'::uuid, '550e8400-e29b-41d4-a716-446655440003'::uuid, 
    'Veena Stores', 
    'Legendary masala dosa and filter coffee since 1948', 
-   'LOW', true, 'ACTIVE', 94.7),
+   '$', true, 'active', 94.7),
    
   ('660e8400-e29b-41d4-a716-446655440004'::uuid, '550e8400-e29b-41d4-a716-446655440004'::uuid, 
    'Truffles', 
    'Popular burgers, shakes, and American comfort food', 
-   'MEDIUM', true, 'ACTIVE', 88.2),
+   '$$', true, 'active', 88.2),
    
   ('660e8400-e29b-41d4-a716-446655440005'::uuid, '550e8400-e29b-41d4-a716-446655440005'::uuid, 
    'Hole in the Wall Cafe', 
    'Cozy cafe with pancakes, eggs benedict, and great coffee', 
-   'MEDIUM', true, 'ACTIVE', 87.6),
+   '$$', true, 'active', 87.6),
    
   ('660e8400-e29b-41d4-a716-446655440006'::uuid, '550e8400-e29b-41d4-a716-446655440006'::uuid, 
    'Koshys', 
    'Historic restaurant serving Continental and Indian since 1940', 
-   'MEDIUM', true, 'ACTIVE', 89.4),
+   '$$', true, 'active', 89.4),
    
   ('660e8400-e29b-41d4-a716-446655440007'::uuid, '550e8400-e29b-41d4-a716-446655440007'::uuid, 
    'Shivaji Military Hotel', 
    'Authentic Karnataka non-veg meals with amazing mutton curry', 
-   'LOW', true, 'ACTIVE', 91.8),
+   '$', true, 'active', 91.8),
    
   ('660e8400-e29b-41d4-a716-446655440008'::uuid, '550e8400-e29b-41d4-a716-446655440008'::uuid, 
    'Vidyarthi Bhavan', 
    'Iconic crispy masala dosa and traditional South Indian breakfast', 
-   'LOW', true, 'ACTIVE', 95.2),
+   '$', true, 'active', 95.2),
    
   ('660e8400-e29b-41d4-a716-446655440009'::uuid, '550e8400-e29b-41d4-a716-446655440009'::uuid, 
    'Brahmins Coffee Bar', 
    'Legendary idli, vada, and filter coffee since 1965', 
-   'LOW', true, 'ACTIVE', 96.1),
+   '$', true, 'active', 96.1),
    
   ('660e8400-e29b-41d4-a716-446655440010'::uuid, '550e8400-e29b-41d4-a716-446655440010'::uuid, 
    'Empire Restaurant', 
    'Famous Mughlai food, especially biryanis and kebabs', 
-   'MEDIUM', true, 'ACTIVE', 90.5),
+   '$$', true, 'active', 90.5),
    
   ('660e8400-e29b-41d4-a716-446655440011'::uuid, '550e8400-e29b-41d4-a716-446655440011'::uuid, 
    'CTR (Central Tiffin Room)', 
    'Historic spot famous for benne masala dosa (butter dosa)', 
-   'LOW', true, 'ACTIVE', 93.7),
+   '$', true, 'active', 93.7),
    
   ('660e8400-e29b-41d4-a716-446655440012'::uuid, '550e8400-e29b-41d4-a716-446655440012'::uuid, 
    'Meghana Foods', 
    'Andhra-style biryani and spicy curries', 
-   'MEDIUM', true, 'ACTIVE', 88.9),
+   '$$', true, 'active', 88.9),
    
   ('660e8400-e29b-41d4-a716-446655440013'::uuid, '550e8400-e29b-41d4-a716-446655440013'::uuid, 
    'Nagarjuna', 
    'Authentic Andhra cuisine with gongura mutton and biryani', 
-   'MEDIUM', true, 'ACTIVE', 90.1),
+   '$$', true, 'active', 90.1),
    
   ('660e8400-e29b-41d4-a716-446655440014'::uuid, '550e8400-e29b-41d4-a716-446655440014'::uuid, 
    'Punjabi Dhaba', 
    'North Indian street food, butter chicken, and parathas', 
-   'LOW', true, 'ACTIVE', 84.3),
+   '$', true, 'active', 84.3),
    
   ('660e8400-e29b-41d4-a716-446655440015'::uuid, '550e8400-e29b-41d4-a716-446655440015'::uuid, 
    'A2B (Adyar Ananda Bhavan)', 
    'South Indian vegetarian restaurant, sweets and snacks', 
-   'LOW', true, 'ACTIVE', 87.2)
+   '$', true, 'active', 87.2)
 ON CONFLICT (id) DO NOTHING;
 
 -- Verify the data
