@@ -1,0 +1,27 @@
+name: raastaa-app
+services:
+- name: raastaa-backend
+  github:
+    repo: YOUR_GITHUB_USERNAME/raastaa-backend
+    branch: main
+    deploy_on_push: true
+  build_command: npm install && npx prisma generate && npx prisma db push --accept-data-loss && npm run build
+  run_command: npm start
+  envs:
+  - key: DATABASE_URL
+    scope: RUN_AND_BUILD_TIME
+    type: SECRET
+  - key: JWT_SECRET
+    scope: RUN_TIME
+    type: SECRET
+  - key: JWT_REFRESH_SECRET
+    scope: RUN_TIME
+    type: SECRET
+  - key: NODE_ENV
+    value: production
+  - key: PORT
+    value: "8080"
+  http_port: 8080
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  source_dir: /
