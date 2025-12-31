@@ -9,7 +9,7 @@ generator client {
 datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
-  extensions = [uuidOssp(map: "uuid-ossp"), postgis, pgTrgm(map: "pg_trgm")]
+  extensions = [uuidOssp(map: "uuid-ossp"), pgTrgm(map: "pg_trgm")]
 }
 
 // ============================================================================
@@ -111,8 +111,6 @@ model Location {
   id          String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
   latitude    Decimal  @db.Decimal(10, 8)
   longitude   Decimal  @db.Decimal(11, 8)
-  // geom is auto-generated in PostgreSQL using a generated column
-  geom        Unsupported("geography(Point,4326)")?
   city        String?  @db.VarChar(100)
   area        String?  @db.VarChar(100)
   fullAddress String?  @map("full_address") @db.Text
@@ -121,7 +119,7 @@ model Location {
 
   vendors Vendor[]
 
-  @@index([geom], type: Gist)
+  @@index([latitude, longitude])
   @@index([city])
   @@index([area])
   @@map("locations")

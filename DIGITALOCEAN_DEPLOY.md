@@ -1,0 +1,162 @@
+# DigitalOcean App Platform Deployment
+
+## Prerequisites
+- DigitalOcean account with $200 credits
+- GitHub repository (already done ✅)
+
+## Step 1: Create PostgreSQL Database
+
+1. Go to https://cloud.digitalocean.com/databases
+2. Click **"Create Database"**
+3. Choose:
+   - **Database Engine:** PostgreSQL 15
+   - **Region:** Bangalore (blr1) 🇮🇳 - Perfect for your users!
+   - **Plan:** Basic - $15/month (covered by credits)
+   - **Name:** raastaa-db
+4. Click **"Create Database"**
+5. Wait 2-3 minutes for provisioning
+
+### Database Setup
+
+Once database is ready:
+1. Click on database → **"Connection Details"** tab
+2. Copy the connection string (will be used as DATABASE_URL)
+
+**Note:** PostGIS is NOT required! The backend now uses simple Haversine distance calculations which work perfectly for city-scale distances like Bangalore. This is actually more efficient and doesn't require special extensions.
+
+## Step 2: Create Redis (Optional but Recommended)
+
+1. Go to https://cloud.digitalocean.com/databases
+2. Click **"Create Database"**
+3. Choose:
+   - **Database Engine:** Redis
+   - **Region:** Bangalore (blr1)
+   - **Plan:** Basic - $15/month
+   - **Name:** raastaa-redis
+4. Click **"Create Database"**
+
+## Step 3: Deploy App
+
+1. Go to https://cloud.digitalocean.com/apps
+2. Click **"Create App"**
+3. Choose **"GitHub"** as source
+4. Select repository: `raastaa-backend`
+5. Branch: `main`
+6. Click **"Next"**
+
+### Configure App Settings
+
+**Region:** Bangalore (blr1)
+
+**Build Command:**
+```bash
+npm install && npx prisma generate && npx prisma migrate deploy
+```
+
+**Run Command:**
+```bash
+npm start
+```
+
+**Environment Variables:**
+
+Click "Edit" and add these:
+
+```
+NODE_ENV=production
+PORT=8080
+
+# Database (get from database dashboard)
+DATABASE_URL=postgresql://doadmin:PASSWORD@HOST:25060/raastaa?sslmode=require
+
+# Redis (get from Redis dashboard, or skip if not using)
+REDIS_URL=rediss://default:PASSWORD@HOST:25061
+
+# JWT Secrets (generate secure ones)
+JWT_SECRET=<generate-64-char-random-string>
+JWT_REFRESH_SECRET=<generate-64-char-random-string>
+
+# CORS
+CORS_ORIGINS=*
+
+# Logging
+LOG_LEVEL=info
+```
+
+### Generate JWT Secrets
+
+Run this locally to generate secrets:
+```bash
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+# Copy output for JWT_SECRET
+
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+# Copy output for JWT_REFRESH_SECRET
+```
+
+**Plan:** Basic - $5/month (covered by credits)
+
+Click **"Next"** → **"Create Resources"**
+
+## Step 4: Deploy & Test
+
+DigitalOcean will:
+1. Clone your repo
+2. Build the app
+3. Run migrations
+4. Deploy to Bangalore datacenter
+
+Your API will be at:
+```
+https://raastaa-backend-xxxxx.ondigitalocean.app
+```
+
+Test it:
+```bash
+curl https://your-app-url.ondigitalocean.app/health
+```
+
+## Cost Breakdown (With Your $200 Credits)
+
+| Service | Cost/Month | Notes |
+|---------|------------|-------|
+| App (API Server) | $5 | Always on, auto-scaling |
+| PostgreSQL | $15 | 1GB RAM, 10GB storage |
+| Redis (optional) | $15 | 1GB RAM |
+| **Total** | **$35/month** | |
+
+**Your $200 credits = 5-6 months FREE!** 🎉
+
+After that, still cheaper than most alternatives.
+
+## Benefits of DigitalOcean
+
+✅ **Bangalore datacenter** - 5-10ms latency locally!
+✅ **Your $200 credits** - Run free for months
+✅ **PostgreSQL + Redis** - Fully managed
+✅ **Auto-scaling** - Handles traffic spikes
+✅ **SSL/HTTPS** - Automatic
+✅ **Monitoring** - Built-in dashboards
+
+## Alternative: DigitalOcean Droplet (Even Cheaper)
+
+If you want to maximize your credits, you could use a Droplet:
+
+**Droplet in Bangalore:**
+- Cost: $6/month (cheapest option)
+- Full control
+- Install PostgreSQL + Redis yourself
+- $200 = 33 months of hosting! 🤯
+
+But App Platform is easier and fully managed.
+
+## Next Steps
+
+1. Create PostgreSQL database in Bangalore
+2. Enable PostGIS extension
+3. Create Redis (optional)
+4. Deploy app via App Platform
+5. Update iOS Backend.swift with your URL
+6. Test and launch! 🚀
+
+Need help with any step?

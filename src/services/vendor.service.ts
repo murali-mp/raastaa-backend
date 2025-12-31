@@ -1,6 +1,7 @@
 import { db } from '../config/database';
 import { Prisma } from '@prisma/client';
 import { NotFoundError } from '../utils/errors';
+import { calculateDistance, getBoundingBox } from '../utils/geoUtils';
 
 export interface NearbyVendorsQuery {
   latitude: number;
@@ -14,7 +15,7 @@ export interface NearbyVendorsQuery {
 
 export class VendorService {
   /**
-   * Find vendors near coordinates using PostGIS
+   * Find vendors near coordinates using Haversine distance formula
    */
   async findNearby(query: NearbyVendorsQuery) {
     const {
@@ -27,93 +28,219 @@ export class VendorService {
       offset = 0,
     } = query;
 
-    const radiusMeters = radiusKm * 1000;
+    // Get bounding box for initial filtering (efficient)
+    const bbox = getBoundingBox(latitude, longitude, radiusKm);
 
-    // Build the SQL query with PostGIS
-    const sql = Prisma.sql`
-      SELECT 
-        v.id,
-        v.name,
-        v.description,
-        v.price_band as "priceBand",
-        v.is_verified as "isVerified",
-        v.popularity_score as "popularityScore",
-        v.status,
-        l.latitude,
-        l.longitude,
-        l.city,
-        l.area,
-        l.full_address as "fullAddress",
-        ST_Distance(
-          l.geom,
-          ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography
-        ) as distance_meters
-      FROM vendors v
-      INNER JOIN locations l ON l.id = v.location_id
-      WHERE v.status = 'ACTIVE'
-        AND ST_DWithin(
-          l.geom,
-          ST_SetSRID(ST_MakePoint(${longitude}, ${latitude}), 4326)::geography,
-          ${radiusMeters}
-        )
-        ${tags.length > 0 ? Prisma.sql`
-          AND v.id IN (
-            SELECT vendor_id FROM vendor_tags
-            WHERE tag_id IN (${Prisma.join(tags)})
-          )
-        ` : Prisma.empty}
-        ${priceBands.length > 0 ? Prisma.sql`
-          AND v.price_band IN (${Prisma.join(priceBands)})
-        ` : Prisma.empty}
-      ORDER BY distance_meters ASC
-      LIMIT ${limit}
-      OFFSET ${offset}
-    `;
-
-    const vendors = await db.$queryRaw<any[]>(sql);
-
-    // Get tags for each vendor
-    const vendorIds = vendors.map(v => v.id);
-    const vendorTags = await db.vendorTag.findMany({
-      where: {
-        vendorId: { in: vendorIds },
+    // Build where clause
+    const where: Prisma.VendorWhereInput = {
+      status: 'ACTIVE',
+      location: {
+        latitude: {
+          gte: bbox.minLat,
+          lte: bbox.maxLat,
+        },
+        longitude: {
+          gte: bbox.minLon,
+          lte: bbox.maxLon,
+        },
       },
+    };
+
+    // Add tag filtering if provided
+    if (tags.length > 0) {
+      where.tags = {
+        some: {
+          tagId: {
+            in: tags,
+          },
+        },
+      };
+    }
+
+    // Add price band filtering if provided
+    if (priceBands.length > 0) {
+      where.priceBand = {
+        in: priceBands as any[],
+      };
+    }
+
+    // Fetch vendors within bounding box
+    const vendors = await db.vendor.findMany({
+      where,
       include: {
-        tag: true,
+        location: {
+          select: {
+            id: true,
+            latitude: true,
+            longitude: true,
+            city: true,
+            area: true,
+            fullAddress: true,
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
       },
+      take: limit * 2, // Get extra to account for distance filtering
     });
 
-    // Group tags by vendor
-    const tagsByVendor = vendorTags.reduce((acc, vt) => {
-      if (!acc[vt.vendorId]) {
-        acc[vt.vendorId] = [];
-      }
-      acc[vt.vendorId].push(vt.tag);
-      return acc;
-    }, {} as Record<string, any[]>);
+    // Calculate exact distances and filter
+    const vendorsWithDistance = vendors
+      .map((vendor) => {
+        const distance = calculateDistance(
+          latitude,
+          longitude,
+          Number(vendor.location.latitude),
+          Number(vendor.location.longitude)
+        );
 
-    // Attach tags to vendors
-    const vendorsWithTags = vendors.map(vendor => ({
-      ...vendor,
-      distance_meters: Number(vendor.distance_meters),
-      popularityScore: Number(vendor.popularityScore),
-      tags: tagsByVendor[vendor.id] || [],
+        return {
+          ...vendor,
+          distance_km: distance,
+        };
+      })
+      .filter((v) => v.distance_km <= radiusKm)
+      .sort((a, b) => a.distance_km - b.distance_km)
+      .slice(offset, offset + limit);
+
+    // Transform the response
+    return vendorsWithDistance.map((v) => ({
+      id: v.id,
+      name: v.name,
+      description: v.description,
+      priceBand: v.priceBand,
+      isVerified: v.isVerified,
+      popularityScore: v.popularityScore,
+      status: v.status,
+      latitude: v.location.latitude,
+      longitude: v.location.longitude,
+      city: v.location.city,
+      area: v.location.area,
+      fullAddress: v.location.fullAddress,
+      distance_km: v.distance_km,
+      tags: v.tags.map((vt) => ({
+        id: vt.tag.id,
+        name: vt.tag.name,
+        category: vt.tag.category,
+      })),
     }));
-
-    return {
-      vendors: vendorsWithTags,
-      total: vendorsWithTags.length,
-      limit,
-      offset,
-    };
   }
 
   /**
-   * Get vendor by ID with full details
+   * Find vendors by search query
    */
-  async getById(vendorId: string, userId?: string) {
+  async searchVendors(
+    query: string,
+    options: {
+      tags?: string[];
+      priceBands?: string[];
+      city?: string;
+      limit?: number;
+      offset?: number;
+    } = {}
+  ) {
+    const { tags = [], priceBands = [], city, limit = 20, offset = 0 } = options;
+
+    const where: Prisma.VendorWhereInput = {
+      status: 'ACTIVE',
+      OR: [
+        {
+          name: {
+            contains: query,
+            mode: 'insensitive',
+          },
+        },
+        {
+          description: {
+            contains: query,
+            mode: 'insensitive',
+          },
+        },
+      ],
+    };
+
+    if (tags.length > 0) {
+      where.tags = {
+        some: {
+          tagId: {
+            in: tags,
+          },
+        },
+      };
+    }
+
+    if (priceBands.length > 0) {
+      where.priceBand = {
+        in: priceBands as any[],
+      };
+    }
+
+    if (city) {
+      where.location = {
+        city: {
+          equals: city,
+          mode: 'insensitive',
+        },
+      };
+    }
+
+    const vendors = await db.vendor.findMany({
+      where,
+      include: {
+        location: {
+          select: {
+            id: true,
+            latitude: true,
+            longitude: true,
+            city: true,
+            area: true,
+            fullAddress: true,
+          },
+        },
+        tags: {
+          include: {
+            tag: true,
+          },
+        },
+      },
+      take: limit,
+      skip: offset,
+      orderBy: [
+        { isVerified: 'desc' },
+        { popularityScore: 'desc' },
+      ],
+    });
+
+    return vendors.map((v) => ({
+      id: v.id,
+      name: v.name,
+      description: v.description,
+      priceBand: v.priceBand,
+      isVerified: v.isVerified,
+      popularityScore: v.popularityScore,
+      status: v.status,
+      latitude: v.location.latitude,
+      longitude: v.location.longitude,
+      city: v.location.city,
+      area: v.location.area,
+      fullAddress: v.location.fullAddress,
+      tags: v.tags.map((vt) => ({
+        id: vt.tag.id,
+        name: vt.tag.name,
+        category: vt.tag.category,
+      })),
+    }));
+  }
+
+  /**
+   * Get vendor by ID
+   */
+  async getById(id: string) {
     const vendor = await db.vendor.findUnique({
-      where: { id: vendorId },
+      where: { id },
       include: {
         location: true,
         operationalInfo: true,
@@ -122,10 +249,6 @@ export class VendorService {
             tag: true,
           },
         },
-        menuItems: {
-          where: { isAvailable: true },
-          orderBy: { sortOrder: 'asc' },
-        },
       },
     });
 
@@ -133,125 +256,50 @@ export class VendorService {
       throw new NotFoundError('Vendor not found');
     }
 
-    // Get review stats
-    const reviewStats = await db.review.aggregate({
-      where: {
-        vendorId,
-        status: 'VISIBLE',
-      },
-      _avg: {
-        overallScore: true,
-      },
-      _count: {
-        id: true,
-      },
-    });
+    return vendor;
+  }
 
-    // Check if user has reviewed
-    let userReview = null;
-    if (userId) {
-      userReview = await db.review.findUnique({
-        where: {
-          userId_vendorId: {
-            userId,
-            vendorId,
+  /**
+   * Get featured vendors
+   */
+  async getFeatured(city?: string, limit: number = 10) {
+    const where: Prisma.VendorWhereInput = {
+      status: 'ACTIVE',
+      isVerified: true,
+    };
+
+    if (city) {
+      where.location = {
+        city: {
+          equals: city,
+          mode: 'insensitive',
+        },
+      };
+    }
+
+    return db.vendor.findMany({
+      where,
+      include: {
+        location: {
+          select: {
+            id: true,
+            latitude: true,
+            longitude: true,
+            city: true,
+            area: true,
+            fullAddress: true,
           },
         },
-      });
-    }
-
-    return {
-      ...vendor,
-      tags: vendor.tags.map(vt => vt.tag),
-      reviewStats: {
-        averageScore: reviewStats._avg.overallScore || 0,
-        totalReviews: reviewStats._count.id,
-      },
-      userReview,
-    };
-  }
-
-  /**
-   * Search vendors by name or description
-   */
-  async search(searchQuery: string, limit: number = 20, offset: number = 0) {
-    const vendors = await db.$queryRaw<any[]>`
-      SELECT 
-        v.id,
-        v.name,
-        v.description,
-        v.price_band as "priceBand",
-        v.is_verified as "isVerified",
-        v.popularity_score as "popularityScore",
-        v.status,
-        similarity(v.name, ${searchQuery}) as name_similarity
-      FROM vendors v
-      WHERE v.status = 'ACTIVE'
-        AND (
-          v.name ILIKE ${'%' + searchQuery + '%'}
-          OR v.description ILIKE ${'%' + searchQuery + '%'}
-        )
-      ORDER BY name_similarity DESC, v.popularity_score DESC
-      LIMIT ${limit}
-      OFFSET ${offset}
-    `;
-
-    return {
-      vendors,
-      total: vendors.length,
-      limit,
-      offset,
-    };
-  }
-
-  /**
-   * Get vendor menu
-   */
-  async getMenu(vendorId: string) {
-    const vendor = await db.vendor.findUnique({
-      where: { id: vendorId },
-    });
-
-    if (!vendor) {
-      throw new NotFoundError('Vendor not found');
-    }
-
-    const menuItems = await db.menuItem.findMany({
-      where: { vendorId },
-      orderBy: { sortOrder: 'asc' },
-    });
-
-    return menuItems;
-  }
-
-  /**
-   * Get featured vendors (highest popularity)
-   */
-  async getFeatured(limit: number = 10) {
-    const vendors = await db.vendor.findMany({
-      where: {
-        status: 'ACTIVE',
-        isVerified: true,
-      },
-      include: {
-        location: true,
         tags: {
           include: {
             tag: true,
           },
         },
       },
+      take: limit,
       orderBy: {
         popularityScore: 'desc',
       },
-      take: limit,
     });
-
-    return vendors.map(vendor => ({
-      ...vendor,
-      tags: vendor.tags.map(vt => vt.tag),
-    }));
   }
 }
-
-export const vendorService = new VendorService();
