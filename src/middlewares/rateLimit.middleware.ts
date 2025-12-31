@@ -31,9 +31,15 @@ export const authRateLimiter = rateLimit({
 
 /**
  * Redis-backed rate limiter (more scalable)
+ * Falls back to no rate limiting if Redis is unavailable
  */
 export const createRedisRateLimiter = (maxRequests: number, windowSeconds: number) => {
   return async (req: any, res: any, next: any) => {
+    // If Redis is not available, skip rate limiting
+    if (!redis) {
+      return next();
+    }
+
     const key = `ratelimit:${req.ip}:${req.path}`;
 
     try {
@@ -49,7 +55,8 @@ export const createRedisRateLimiter = (maxRequests: number, windowSeconds: numbe
 
       next();
     } catch (error) {
-      next(error);
+      // If Redis fails, allow the request through
+      next();
     }
   };
 };

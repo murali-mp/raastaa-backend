@@ -15,9 +15,13 @@ const startServer = async () => {
     await db.$connect();
     logger.info('✓ Database connected');
 
-    // Test Redis connection
-    await redis.ping();
-    logger.info('✓ Redis connected');
+    // Test Redis connection (optional)
+    if (redis) {
+      await redis.ping();
+      logger.info('✓ Redis connected');
+    } else {
+      logger.info('⚠ Redis not configured - caching disabled');
+    }
 
     // Create Express app
     const app = createApp();
@@ -40,8 +44,10 @@ const startServer = async () => {
           await db.$disconnect();
           logger.info('Database disconnected');
 
-          await redis.quit();
-          logger.info('Redis disconnected');
+          if (redis) {
+            await redis.quit();
+            logger.info('Redis disconnected');
+          }
 
           process.exit(0);
         } catch (error) {
