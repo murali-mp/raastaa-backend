@@ -94,7 +94,7 @@ node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
 # Copy output for JWT_REFRESH_SECRET
 ```
 
-**Plan:** Basic - $5/month (covered by credits)
+**Plan:** Professional - $25/month (1GB RAM, covered by credits)
 
 Click **"Next"** → **"Create Resources"**
 
@@ -120,14 +120,14 @@ curl https://your-app-url.ondigitalocean.app/health
 
 | Service | Cost/Month | Notes |
 |---------|------------|-------|
-| App (API Server) | $5 | Always on, auto-scaling |
+| App (API Server) | $25 | Professional tier, 1GB RAM |
 | PostgreSQL | $15 | 1GB RAM, 10GB storage |
 | Redis (optional) | $15 | 1GB RAM |
-| **Total** | **$35/month** | |
+| **Total** | **$40-55/month** | |
 
-**Your $200 credits = 5-6 months FREE!** 🎉
+**Your $200 credits = 3-5 months FREE!** 🎉
 
-After that, still cheaper than most alternatives.
+Or skip Redis and it's $40/month = 5 months free.
 
 ## Benefits of DigitalOcean
 
