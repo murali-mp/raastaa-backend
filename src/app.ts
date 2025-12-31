@@ -14,6 +14,8 @@ import vendorRoutes from './routes/vendor.routes';
 import walletRoutes from './routes/wallet.routes';
 import challengeRoutes from './routes/challenge.routes';
 import postRoutes from './routes/post.routes';
+import tagRoutes from './routes/tag.routes';
+import visitRoutes from './routes/visit.routes';
 
 export const createApp = (): Application => {
   const app = express();
@@ -60,6 +62,8 @@ export const createApp = (): Application => {
   app.use('/api/v1/wallet', walletRoutes);
   app.use('/api/v1/challenges', challengeRoutes);
   app.use('/api/v1/posts', postRoutes);
+  app.use('/api/v1/tags', tagRoutes);
+  app.use('/api/v1/visits', visitRoutes);
   // 404 handler
   app.use(notFoundHandler);
 

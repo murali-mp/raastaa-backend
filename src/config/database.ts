@@ -1,30 +1,36 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import { logger } from '../utils/logger';
 
-// Singleton Prisma Client instance
-let prisma: PrismaClient;
+const createPrismaClient = () =>
+  new PrismaClient({
+    log: [
+      { level: 'warn', emit: 'event' },
+      { level: 'error', emit: 'event' },
+    ],
+  });
 
-export const getPrismaClient = (): PrismaClient => {
+type PrismaClientWithEvents = ReturnType<typeof createPrismaClient>;
+
+// Singleton Prisma Client instance
+let prisma: PrismaClientWithEvents | undefined;
+
+export const getPrismaClient = (): PrismaClientWithEvents => {
   if (!prisma) {
-    prisma = new PrismaClient({
-      log: [
-        { level: 'warn', emit: 'event' },
-        { level: 'error', emit: 'event' },
-      ],
-    });
+    prisma = createPrismaClient();
 
     // Log warnings and errors
-    prisma.$on('warn' as never, (e: any) => {
+    prisma.$on('warn', (e: Prisma.LogEvent) => {
       logger.warn('Prisma warning:', e);
     });
 
-    prisma.$on('error' as never, (e: any) => {
+    prisma.$on('error', (e: Prisma.LogEvent) => {
       logger.error('Prisma error:', e);
     });
 
     // Handle graceful shutdown
+    const client = prisma;
     process.on('beforeExit', async () => {
-      await prisma.$disconnect();
+      await client.$disconnect();
     });
   }
 

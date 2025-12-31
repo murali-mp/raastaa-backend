@@ -3,18 +3,16 @@ import { verifyToken, extractTokenFromHeader, TokenPayload } from '../utils/jwt'
 import { AuthenticationError } from '../utils/errors';
 import { db } from '../config/database';
 
-// Extend Express Request type
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        id: string;
-        username: string;
-        email?: string | null;
-        trustScore: number;
-      };
-      userId?: string;
-    }
+declare module 'express-serve-static-core' {
+  interface Request {
+    user?: {
+      id: string;
+      username: string;
+      email?: string | null;
+      trustScore: number;
+      status: string;
+    };
+    userId?: string;
   }
 }
 
@@ -23,7 +21,7 @@ declare global {
  */
 export const authenticate = async (
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
@@ -69,7 +67,7 @@ export const authenticate = async (
  */
 export const optionalAuthenticate = async (
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {

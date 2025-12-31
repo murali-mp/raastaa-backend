@@ -1,6 +1,7 @@
 import { db } from '../config/database';
-import { Prisma, FeedPost, Comment } from '@prisma/client';
+import { FeedPost, Comment } from '@prisma/client';
 import { NotFoundError, ValidationError } from '../utils/errors';
+import { serializeComment, serializeFeedPost } from '../utils/serializers';
 
 export interface CreatePostInput {
   authorId: string;
@@ -89,7 +90,7 @@ export class PostService {
       },
     });
 
-    return post;
+    return serializeFeedPost(post) as unknown as FeedPost;
   }
 
   /**
@@ -153,11 +154,11 @@ export class PostService {
       const isLiked = interactions.some((i) => i.interactionType === 'LIKE');
       const isSaved = interactions.some((i) => i.interactionType === 'SAVE');
 
-      return {
+      return serializeFeedPost({
         ...post,
         isLiked,
         isSaved,
-      };
+      });
     });
   }
 
@@ -237,19 +238,22 @@ export class PostService {
       const isLiked = interactions.some((i) => i.interactionType === 'LIKE');
       const isSaved = interactions.some((i) => i.interactionType === 'SAVE');
 
-      return {
+      return serializeFeedPost({
         ...post,
         isLiked,
         isSaved,
-      };
+      });
     });
   }
 
   /**
    * Get posts by a specific user
    */
-  async getUserPosts(userId: string, options: { limit?: number; offset?: number }) {
-    const { limit = 20, offset = 0 } = options;
+  async getUserPosts(
+    userId: string,
+    options: { limit?: number; offset?: number; viewerId?: string }
+  ) {
+    const { limit = 20, offset = 0, viewerId } = options;
 
     const posts = await db.feedPost.findMany({
       where: {
@@ -286,7 +290,7 @@ export class PostService {
         },
         interactions: {
           where: {
-            userId,
+            userId: viewerId ?? '',
           },
         },
       },
@@ -302,11 +306,11 @@ export class PostService {
       const isLiked = interactions.some((i) => i.interactionType === 'LIKE');
       const isSaved = interactions.some((i) => i.interactionType === 'SAVE');
 
-      return {
+      return serializeFeedPost({
         ...post,
         isLiked,
         isSaved,
-      };
+      });
     });
   }
 
@@ -480,7 +484,7 @@ export class PostService {
       },
     });
 
-    return comments;
+    return comments.map(serializeComment);
   }
 
   /**
@@ -536,7 +540,7 @@ export class PostService {
       }),
     ]);
 
-    return comment;
+    return serializeComment(comment) as unknown as Comment;
   }
 
   /**
@@ -589,10 +593,10 @@ export class PostService {
     const isLiked = interactions.some((i) => i.interactionType === 'LIKE');
     const isSaved = interactions.some((i) => i.interactionType === 'SAVE');
 
-    return {
+    return serializeFeedPost({
       ...post,
       isLiked,
       isSaved,
-    };
+    });
   }
 }

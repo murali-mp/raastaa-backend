@@ -1,6 +1,7 @@
 import rateLimit from 'express-rate-limit';
 import { redis } from '../config/redis';
 import { TooManyRequestsError } from '../utils/errors';
+import type { Request, Response, NextFunction } from 'express';
 
 /**
  * General API rate limiter
@@ -11,7 +12,7 @@ export const apiRateLimiter = rateLimit({
   message: 'Too many requests from this IP, please try again later',
   standardHeaders: true,
   legacyHeaders: false,
-  handler: (req, res) => {
+  handler: (_req, _res) => {
     throw new TooManyRequestsError('Too many requests, please try again later');
   },
 });
@@ -24,7 +25,7 @@ export const authRateLimiter = rateLimit({
   max: 5, // 5 attempts
   message: 'Too many authentication attempts, please try again later',
   skipSuccessfulRequests: true,
-  handler: (req, res) => {
+  handler: (_req, _res) => {
     throw new TooManyRequestsError('Too many login attempts, please try again later');
   },
 });
@@ -34,7 +35,7 @@ export const authRateLimiter = rateLimit({
  * Falls back to no rate limiting if Redis is unavailable
  */
 export const createRedisRateLimiter = (maxRequests: number, windowSeconds: number) => {
-  return async (req: any, res: any, next: any) => {
+  return async (req: Request, _res: Response, next: NextFunction) => {
     // If Redis is not available, skip rate limiting
     if (!redis) {
       return next();
@@ -54,7 +55,7 @@ export const createRedisRateLimiter = (maxRequests: number, windowSeconds: numbe
       }
 
       next();
-    } catch (error) {
+    } catch (_error) {
       // If Redis fails, allow the request through
       next();
     }

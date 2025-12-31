@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { authService } from '../services/auth.service';
-import { generateAccessToken, verifyToken, extractTokenFromHeader } from '../utils/jwt';
+import { generateAccessToken, verifyToken } from '../utils/jwt';
 import { AuthenticationError } from '../utils/errors';
 
 export class AuthController {

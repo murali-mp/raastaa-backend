@@ -215,7 +215,7 @@ export class AuthService {
     displayName?: string
   ): Promise<UserWithTokens> {
     // Find existing identity
-    let identity = await db.authIdentity.findUnique({
+    const identity = await db.authIdentity.findUnique({
       where: {
         provider_providerUserId: {
           provider,
@@ -294,9 +294,10 @@ export class AuthService {
   /**
    * Remove sensitive fields from user object
    */
-  private sanitizeUser(user: any): Partial<User> {
-    const { identities, ...sanitized } = user;
-    return sanitized;
+  private sanitizeUser<T extends object>(user: T): Omit<T, 'identities'> {
+    const { identities, ...sanitized } = user as T & { identities?: unknown };
+    void identities;
+    return sanitized as Omit<T, 'identities'>;
   }
 }
 

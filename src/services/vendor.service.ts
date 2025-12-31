@@ -1,7 +1,8 @@
 import { db } from '../config/database';
-import { Prisma } from '@prisma/client';
+import { Prisma, PriceBand } from '@prisma/client';
 import { NotFoundError } from '../utils/errors';
 import { calculateDistance, getBoundingBox } from '../utils/geoUtils';
+import { serializeVendor } from '../utils/serializers';
 
 export interface NearbyVendorsQuery {
   latitude: number;
@@ -59,8 +60,12 @@ export class VendorService {
 
     // Add price band filtering if provided
     if (priceBands.length > 0) {
+      const validPriceBands = priceBands.filter((pb): pb is PriceBand =>
+        Object.values(PriceBand).includes(pb as PriceBand)
+      );
+
       where.priceBand = {
-        in: priceBands as any[],
+        in: validPriceBands,
       };
     }
 
@@ -83,6 +88,7 @@ export class VendorService {
             tag: true,
           },
         },
+        operationalInfo: true,
       },
       take: limit * 2, // Get extra to account for distance filtering
     });
@@ -107,26 +113,7 @@ export class VendorService {
       .slice(offset, offset + limit);
 
     // Transform the response
-    return vendorsWithDistance.map((v) => ({
-      id: v.id,
-      name: v.name,
-      description: v.description,
-      priceBand: v.priceBand,
-      isVerified: v.isVerified,
-      popularityScore: v.popularityScore,
-      status: v.status,
-      latitude: v.location.latitude,
-      longitude: v.location.longitude,
-      city: v.location.city,
-      area: v.location.area,
-      fullAddress: v.location.fullAddress,
-      distance_km: v.distance_km,
-      tags: v.tags.map((vt) => ({
-        id: vt.tag.id,
-        name: vt.tag.name,
-        category: vt.tag.category,
-      })),
-    }));
+    return vendorsWithDistance.map((v) => serializeVendor(v, { distanceMeters: v.distance_km * 1000 }));
   }
 
   /**
@@ -173,8 +160,12 @@ export class VendorService {
     }
 
     if (priceBands.length > 0) {
+      const validPriceBands = priceBands.filter((pb): pb is PriceBand =>
+        Object.values(PriceBand).includes(pb as PriceBand)
+      );
+
       where.priceBand = {
-        in: priceBands as any[],
+        in: validPriceBands,
       };
     }
 

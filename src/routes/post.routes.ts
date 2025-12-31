@@ -1,6 +1,8 @@
 import { Router, Request, Response } from 'express';
 import { PostService } from '../services/post.service';
 import { authenticate, optionalAuthenticate } from '../middlewares/auth.middleware';
+import { AppError } from '../utils/errors';
+import { logger } from '../utils/logger';
 
 const router = Router();
 const postService = new PostService();
@@ -11,7 +13,9 @@ const postService = new PostService();
  */
 router.post('/', authenticate, async (req: Request, res: Response) => {
   try {
-    const { vendorId, postType, body, mediaIds } = req.body;
+    const { vendorId, body, mediaIds } = req.body;
+    const postTypeRaw: unknown = req.body?.postType;
+    const postType = typeof postTypeRaw === 'string' ? postTypeRaw.toUpperCase() : postTypeRaw;
 
     if (!postType) {
       return res.status(400).json({
@@ -20,7 +24,7 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
       });
     }
 
-    if (!['REVIEW', 'TIP', 'PHOTO', 'CHECKIN'].includes(postType)) {
+    if (!['REVIEW', 'TIP', 'PHOTO', 'CHECKIN'].includes(String(postType))) {
       return res.status(400).json({
         status: 'error',
         message: 'Invalid postType. Must be one of: REVIEW, TIP, PHOTO, CHECKIN',
@@ -30,22 +34,22 @@ router.post('/', authenticate, async (req: Request, res: Response) => {
     const post = await postService.createPost({
       authorId: req.userId!,
       vendorId,
-      postType,
+      postType: postType as 'REVIEW' | 'TIP' | 'PHOTO' | 'CHECKIN',
       body,
       mediaIds,
     });
 
     res.status(201).json({
       status: 'success',
-      data: {
-        post,
-      },
+      data: post,
     });
-  } catch (error: any) {
-    console.error('Error creating post:', error);
-    res.status(error.statusCode || 500).json({
+  } catch (error: unknown) {
+    logger.error('Error creating post', { error });
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const message = error instanceof Error ? error.message : 'Failed to create post';
+    res.status(statusCode).json({
       status: 'error',
-      message: error.message || 'Failed to create post',
+      message,
     });
   }
 });
@@ -71,11 +75,13 @@ router.get('/', optionalAuthenticate, async (req: Request, res: Response) => {
         count: posts.length,
       },
     });
-  } catch (error: any) {
-    console.error('Error fetching posts:', error);
-    res.status(error.statusCode || 500).json({
+  } catch (error: unknown) {
+    logger.error('Error fetching posts', { error });
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const message = error instanceof Error ? error.message : 'Failed to fetch posts';
+    res.status(statusCode).json({
       status: 'error',
-      message: error.message || 'Failed to fetch posts',
+      message,
     });
   }
 });
@@ -100,11 +106,13 @@ router.get('/following', authenticate, async (req: Request, res: Response) => {
         count: posts.length,
       },
     });
-  } catch (error: any) {
-    console.error('Error fetching following feed:', error);
-    res.status(error.statusCode || 500).json({
+  } catch (error: unknown) {
+    logger.error('Error fetching following feed', { error });
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const message = error instanceof Error ? error.message : 'Failed to fetch following feed';
+    res.status(statusCode).json({
       status: 'error',
-      message: error.message || 'Failed to fetch following feed',
+      message,
     });
   }
 });
@@ -121,15 +129,15 @@ router.get('/:id', optionalAuthenticate, async (req: Request, res: Response) => 
 
     res.json({
       status: 'success',
-      data: {
-        post,
-      },
+      data: post,
     });
-  } catch (error: any) {
-    console.error('Error fetching post:', error);
-    res.status(error.statusCode || 500).json({
+  } catch (error: unknown) {
+    logger.error('Error fetching post', { error });
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const message = error instanceof Error ? error.message : 'Failed to fetch post';
+    res.status(statusCode).json({
       status: 'error',
-      message: error.message || 'Failed to fetch post',
+      message,
     });
   }
 });
@@ -148,11 +156,13 @@ router.post('/:id/like', authenticate, async (req: Request, res: Response) => {
       status: 'success',
       data: result,
     });
-  } catch (error: any) {
-    console.error('Error toggling like:', error);
-    res.status(error.statusCode || 500).json({
+  } catch (error: unknown) {
+    logger.error('Error toggling like', { error });
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const message = error instanceof Error ? error.message : 'Failed to like post';
+    res.status(statusCode).json({
       status: 'error',
-      message: error.message || 'Failed to like post',
+      message,
     });
   }
 });
@@ -171,11 +181,13 @@ router.post('/:id/save', authenticate, async (req: Request, res: Response) => {
       status: 'success',
       data: result,
     });
-  } catch (error: any) {
-    console.error('Error toggling save:', error);
-    res.status(error.statusCode || 500).json({
+  } catch (error: unknown) {
+    logger.error('Error toggling save', { error });
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const message = error instanceof Error ? error.message : 'Failed to save post';
+    res.status(statusCode).json({
       status: 'error',
-      message: error.message || 'Failed to save post',
+      message,
     });
   }
 });
@@ -197,11 +209,13 @@ router.get('/:id/comments', async (req: Request, res: Response) => {
         count: comments.length,
       },
     });
-  } catch (error: any) {
-    console.error('Error fetching comments:', error);
-    res.status(error.statusCode || 500).json({
+  } catch (error: unknown) {
+    logger.error('Error fetching comments', { error });
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const message = error instanceof Error ? error.message : 'Failed to fetch comments';
+    res.status(statusCode).json({
       status: 'error',
-      message: error.message || 'Failed to fetch comments',
+      message,
     });
   }
 });
@@ -230,15 +244,15 @@ router.post('/:id/comments', authenticate, async (req: Request, res: Response) =
 
     res.status(201).json({
       status: 'success',
-      data: {
-        comment,
-      },
+      data: comment,
     });
-  } catch (error: any) {
-    console.error('Error adding comment:', error);
-    res.status(error.statusCode || 500).json({
+  } catch (error: unknown) {
+    logger.error('Error adding comment', { error });
+    const statusCode = error instanceof AppError ? error.statusCode : 500;
+    const message = error instanceof Error ? error.message : 'Failed to add comment';
+    res.status(statusCode).json({
       status: 'error',
-      message: error.message || 'Failed to add comment',
+      message,
     });
   }
 });

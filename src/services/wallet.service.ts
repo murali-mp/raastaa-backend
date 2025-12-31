@@ -1,6 +1,6 @@
 import { db } from '../config/database';
 import { TransactionReason } from '@prisma/client';
-import { NotFoundError, ValidationError } from '../utils/errors';
+import { ValidationError } from '../utils/errors';
 
 export class WalletService {
   /**
