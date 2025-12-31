@@ -1,48 +1,36 @@
--- Seed data for Raastaa Backend - Bangalore Vendors
--- Run this SQL script in your DigitalOcean PostgreSQL database
+-- Complete setup script for fresh "raastaa" database
+-- Run this entire script in your psql console connected to the "raastaa" database
 
--- Insert Locations first
+-- Step 1: Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Step 2: You need to run migrations first
+-- Exit psql and run this in DigitalOcean App Console:
+-- npx prisma db push
+
+-- After migrations create the tables, come back here and run the rest:
+
+-- Step 3: Insert Locations
 INSERT INTO locations (id, latitude, longitude, city, area, full_address)
 VALUES
-  -- VV Puram Food Street
   ('550e8400-e29b-41d4-a716-446655440001'::uuid, 12.9425, 77.5748, 'Bangalore', 'VV Puram', 'VV Puram Food Street, Gandhi Bazaar, Bangalore 560004'),
   ('550e8400-e29b-41d4-a716-446655440002'::uuid, 12.9428, 77.5745, 'Bangalore', 'VV Puram', 'VV Puram Food Street, Gandhi Bazaar, Bangalore 560004'),
-  
-  -- Koramangala
   ('550e8400-e29b-41d4-a716-446655440003'::uuid, 12.9352, 77.6245, 'Bangalore', 'Koramangala', '14th Main Road, Koramangala 4th Block, Bangalore 560034'),
   ('550e8400-e29b-41d4-a716-446655440004'::uuid, 12.9349, 77.6193, 'Bangalore', 'Koramangala', '80 Feet Road, Koramangala 5th Block, Bangalore 560095'),
-  
-  -- Indiranagar
   ('550e8400-e29b-41d4-a716-446655440005'::uuid, 12.9716, 77.6412, 'Bangalore', 'Indiranagar', '16th Main Road, Indiranagar, Bangalore 560038'),
-  
-  -- Church Street Area
   ('550e8400-e29b-41d4-a716-446655440006'::uuid, 12.9753, 77.6044, 'Bangalore', 'MG Road', '39 St Marks Road, near Church Street, Bangalore 560001'),
   ('550e8400-e29b-41d4-a716-446655440007'::uuid, 12.9769, 77.6071, 'Bangalore', 'Residency Road', '5th Cross, Residency Road, Bangalore 560025'),
-  
-  -- Jayanagar/Basavanagudi
   ('550e8400-e29b-41d4-a716-446655440008'::uuid, 12.9450, 77.5730, 'Bangalore', 'Basavanagudi', '32 Gandhi Bazaar Main Rd, Basavanagudi, Bangalore 560004'),
   ('550e8400-e29b-41d4-a716-446655440009'::uuid, 12.9404, 77.5828, 'Bangalore', 'Hanumanthnagar', 'Hanumanthnagar, near Lalbagh, Bangalore 560019'),
-  
-  -- MG Road/Brigade Road
   ('550e8400-e29b-41d4-a716-446655440010'::uuid, 12.9718, 77.6022, 'Bangalore', 'Brigade Road', 'Brigade Road, Bangalore 560025'),
-  
-  -- Malleshwaram
   ('550e8400-e29b-41d4-a716-446655440011'::uuid, 13.0006, 77.5707, 'Bangalore', 'Malleshwaram', 'Sampige Road, Malleshwaram, Bangalore 560003'),
-  
-  -- HSR Layout
   ('550e8400-e29b-41d4-a716-446655440012'::uuid, 12.9121, 77.6446, 'Bangalore', 'HSR Layout', '27th Main Road, HSR Layout, Bangalore 560102'),
-  
-  -- Whitefield
   ('550e8400-e29b-41d4-a716-446655440013'::uuid, 12.9698, 77.7499, 'Bangalore', 'Whitefield', 'Whitefield Main Road, Bangalore 560066'),
-  
-  -- Banashankari
   ('550e8400-e29b-41d4-a716-446655440014'::uuid, 12.9251, 77.5486, 'Bangalore', 'Banashankari', 'Kanakapura Road, Banashankari, Bangalore 560070'),
-  
-  -- Electronic City
   ('550e8400-e29b-41d4-a716-446655440015'::uuid, 12.8456, 77.6603, 'Bangalore', 'Electronic City', 'Hosur Road, Electronic City, Bangalore 560100')
 ON CONFLICT (id) DO NOTHING;
 
--- Insert Vendors (with timestamps)
+-- Step 4: Insert Vendors
 INSERT INTO vendors (id, location_id, name, description, price_band, is_verified, status, popularity_score, created_at, updated_at)
 VALUES
   ('660e8400-e29b-41d4-a716-446655440001'::uuid, '550e8400-e29b-41d4-a716-446655440001'::uuid, 
@@ -121,18 +109,7 @@ VALUES
    '$', true, 'active', 87.2, NOW(), NOW())
 ON CONFLICT (id) DO NOTHING;
 
--- Verify the data
-SELECT COUNT(*) as total_locations FROM locations WHERE city = 'Bangalore';
-SELECT COUNT(*) as total_vendors FROM vendors WHERE is_verified = true;
-
--- Test spatial queries
-SELECT 
-  v.name, 
-  l.area,
-  l.latitude,
-  l.longitude
-FROM vendors v
-JOIN locations l ON v.location_id = l.id
-WHERE l.city = 'Bangalore'
-ORDER BY v.popularity_score DESC
-LIMIT 5;
+-- Verify
+SELECT COUNT(*) as total_locations FROM locations;
+SELECT COUNT(*) as total_vendors FROM vendors;
+SELECT name, city FROM locations ORDER BY city, name;
