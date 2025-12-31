@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authenticate, optionalAuthenticate } from '../middlewares/auth.middleware';
 import { PostService } from '../services/post.service';
 import { authService } from '../services/auth.service';
+import { walletService } from '../services/wallet.service';
 import { AppError } from '../utils/errors';
 import { logger } from '../utils/logger';
 import { db } from '../config/database';
@@ -131,9 +132,16 @@ router.post('/:id/follow', authenticate, async (req: Request, res: Response) => 
       create: { followerId, followingId },
     });
 
+    // Award points for following
+    try {
+      await walletService.awardFollowBonus(followerId, followingId);
+    } catch {
+      // Silently fail if points can't be awarded (idempotency)
+    }
+
     res.json({
       status: 'success',
-      data: { isFollowing: true },
+      data: { isFollowing: true, pointsEarned: 3 },
     });
   } catch (error: unknown) {
     logger.error('Failed to follow user', { error });

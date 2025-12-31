@@ -630,6 +630,10 @@ enum TransactionReason {
   CHALLENGE_COMPLETE @map("challenge_complete")
   ADJUSTMENT @map("adjustment")
   REDEMPTION @map("redemption")
+  LIKE_BONUS @map("like_bonus")
+  COMMENT_BONUS @map("comment_bonus")
+  POST_BONUS @map("post_bonus")
+  FOLLOW_BONUS @map("follow_bonus")
 
   @@map("transaction_reason")
 }

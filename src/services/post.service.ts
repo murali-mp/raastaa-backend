@@ -2,6 +2,7 @@ import { db } from '../config/database';
 import { FeedPost, Comment } from '@prisma/client';
 import { NotFoundError, ValidationError } from '../utils/errors';
 import { serializeComment, serializeFeedPost } from '../utils/serializers';
+import { walletService } from './wallet.service';
 
 export interface CreatePostInput {
   authorId: string;
@@ -24,6 +25,11 @@ export class PostService {
   async createPost(input: CreatePostInput): Promise<FeedPost> {
     const { authorId, vendorId, postType, body, mediaIds = [] } = input;
 
+    // Reviews must be tied to a vendor
+    if (postType === 'REVIEW' && (!vendorId || String(vendorId).length === 0)) {
+      throw new ValidationError('vendorId is required for review posts');
+    }
+
     // Validate user exists
     const user = await db.user.findUnique({
       where: { id: authorId },
@@ -44,51 +50,70 @@ export class PostService {
       }
     }
 
-    // Create post with media relations
-    const post = await db.feedPost.create({
-      data: {
-        authorId,
-        vendorId,
-        postType,
-        body,
-        status: 'VISIBLE',
-        media: mediaIds.length > 0 ? {
-          create: mediaIds.map((mediaId, index) => ({
-            mediaId,
-            sortOrder: index,
-          })),
-        } : undefined,
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            username: true,
-            displayName: true,
-            email: true,
-            trustScore: true,
-            status: true,
-            createdAt: true,
-            updatedAt: true,
+    // Reviews: latest overrides previous review(s) for same vendor by same author
+    const post = await db.$transaction(async (tx) => {
+      if (postType === 'REVIEW' && vendorId) {
+        await tx.feedPost.deleteMany({
+          where: {
+            authorId,
+            vendorId,
+            postType: 'REVIEW',
           },
+        });
+      }
+
+      return tx.feedPost.create({
+        data: {
+          authorId,
+          vendorId,
+          postType,
+          body,
+          status: 'VISIBLE',
+          media: mediaIds.length > 0 ? {
+            create: mediaIds.map((mediaId, index) => ({
+              mediaId,
+              sortOrder: index,
+            })),
+          } : undefined,
         },
-        vendor: {
-          include: {
-            location: true,
-            tags: {
-              include: {
-                tag: true,
+        include: {
+          author: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              email: true,
+              trustScore: true,
+              status: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
+          vendor: {
+            include: {
+              location: true,
+              tags: {
+                include: {
+                  tag: true,
+                },
               },
             },
           },
-        },
-        media: {
-          include: {
-            media: true,
+          media: {
+            include: {
+              media: true,
+            },
           },
         },
-      },
+      });
     });
+
+    // Award points for creating the post
+    try {
+      await walletService.awardPostBonus(authorId, post.id, postType.toLowerCase());
+    } catch {
+      // Silently fail if points can't be awarded (idempotency check may fail)
+    }
 
     return serializeFeedPost(post) as unknown as FeedPost;
   }
@@ -390,9 +415,17 @@ export class PostService {
         where: { id: postId },
       });
 
+      // Award points for liking the post
+      try {
+        await walletService.awardLikeBonus(userId, postId);
+      } catch {
+        // Silently fail if points can't be awarded
+      }
+
       return {
         isLiked: true,
         likeCount: updatedPost!.likeCount,
+        pointsEarned: 2, // Include points earned for UI feedback
       };
     }
   }
@@ -539,6 +572,13 @@ export class PostService {
         },
       }),
     ]);
+
+    // Award points for commenting
+    try {
+      await walletService.awardCommentBonus(authorId, comment.id);
+    } catch {
+      // Silently fail if points can't be awarded
+    }
 
     return serializeComment(comment) as unknown as Comment;
   }

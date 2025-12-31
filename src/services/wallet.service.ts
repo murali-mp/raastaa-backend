@@ -155,6 +155,74 @@ export class WalletService {
       referenceId
     );
   }
+
+  // ============================================================================
+  // SOCIAL ENGAGEMENT REWARDS
+  // ============================================================================
+
+  /**
+   * Award points for liking a post (2 points)
+   */
+  async awardLikeBonus(userId: string, postId: string) {
+    const points = 2;
+    return this.addTransaction(
+      userId,
+      points,
+      'LIKE_BONUS',
+      'like',
+      postId
+    );
+  }
+
+  /**
+   * Award points for commenting on a post (5 points)
+   */
+  async awardCommentBonus(userId: string, commentId: string) {
+    const points = 5;
+    return this.addTransaction(
+      userId,
+      points,
+      'COMMENT_BONUS',
+      'comment',
+      commentId
+    );
+  }
+
+  /**
+   * Award points for creating a post (10 points for tips, 15 for reviews)
+   */
+  async awardPostBonus(userId: string, postId: string, postType: string) {
+    // Different point values based on post type
+    const pointsMap: Record<string, number> = {
+      'review': 15,
+      'tip': 10,
+      'checkin': 5,
+      'photo': 5,
+    };
+    const points = pointsMap[postType] || 5;
+
+    return this.addTransaction(
+      userId,
+      points,
+      'POST_BONUS',
+      'post',
+      postId
+    );
+  }
+
+  /**
+   * Award points for following a user (3 points)
+   */
+  async awardFollowBonus(userId: string, followedUserId: string) {
+    const points = 3;
+    return this.addTransaction(
+      userId,
+      points,
+      'FOLLOW_BONUS',
+      'follow',
+      followedUserId
+    );
+  }
 }
 
 export const walletService = new WalletService();
