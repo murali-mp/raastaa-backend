@@ -82,6 +82,8 @@ export const serializeVendor = (value: unknown, options?: { distanceMeters?: num
     isVerified: Boolean(vendor.isVerified),
     status: vendor.status,
     popularityScore: toNumber(vendor.popularityScore),
+    averageRating: toOptionalNumber(vendor.averageRating) ?? null,
+    totalRatings: (vendor.totalRatings as number | null | undefined) ?? null,
     createdAt: vendor.createdAt,
     location,
     distanceMeters: options?.distanceMeters,

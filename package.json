@@ -9,6 +9,13 @@
     "build:prod": "prisma generate && prisma db push --accept-data-loss && tsc",
     "start": "node dist/server.js",
     "seed": "tsx prisma/seed.ts",
+    "seed:1000": "tsx prisma/seed-1000-restaurants.ts",
+    "check-duplicates": "tsx prisma/check-duplicates.ts",
+    "deduplicate": "tsx prisma/remove-duplicates.ts",
+    "cleanup-names": "tsx prisma/cleanup-vendor-names.ts",
+    "scrape-places": "tsx prisma/scrape-google-places.ts",
+    "scrape-osm": "tsx prisma/scrape-openstreetmap.ts",
+    "import-vendors": "tsx scripts/import-vendors.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:migrate:prod": "prisma migrate deploy",
@@ -17,11 +24,17 @@
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\""
   },
-  "keywords": ["raastaa", "food", "api", "postgis"],
+  "keywords": [
+    "raastaa",
+    "food",
+    "api",
+    "postgis"
+  ],
   "author": "Raastaa Team",
   "license": "MIT",
   "dependencies": {
     "@prisma/client": "^5.22.0",
+    "axios": "^1.13.2",
     "bcrypt": "^5.1.1",
     "bull": "^4.12.0",
     "compression": "^1.7.4",

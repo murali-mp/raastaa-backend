@@ -136,6 +136,8 @@ model Vendor {
   isVerified      Boolean   @default(false) @map("is_verified")
   status          VendorStatus @default(ACTIVE)
   popularityScore Decimal   @default(0.0) @map("popularity_score") @db.Decimal(5, 2)
+  averageRating   Decimal?  @map("average_rating") @db.Decimal(3, 2)
+  totalRatings    Int?      @map("total_ratings") @db.Integer
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -176,15 +178,16 @@ enum PriceBand {
 }
 
 model VendorOperationalInfo {
-  id           String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
-  vendorId     String   @unique @map("vendor_id") @db.Uuid
-  openingHours Json?    @map("opening_hours")
-  contactPhone String?  @map("contact_phone") @db.VarChar(20)
-  contactEmail String?  @map("contact_email") @db.VarChar(255)
-  websiteUrl   String?  @map("website_url") @db.VarChar(500)
-  socialLinks  Json?    @map("social_links")
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id            String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  vendorId      String   @unique @map("vendor_id") @db.Uuid
+  openingHours  Json?    @map("opening_hours")
+  contactPhone  String?  @map("contact_phone") @db.VarChar(20)
+  contactEmail  String?  @map("contact_email") @db.VarChar(255)
+  websiteUrl    String?  @map("website_url") @db.VarChar(500)
+  googleMapsUrl String?  @map("google_maps_url") @db.VarChar(1000)
+  socialLinks   Json?    @map("social_links")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
