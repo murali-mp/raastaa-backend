@@ -1,7 +1,8 @@
 #!/usr/bin/env ts-node
 /**
  * Raastaa Backend TUI - Interactive API Testing Tool
- * Run with: npx ts-node scripts/tui.ts
+ * Run with: npm run tui
+ * Show routes: npm run tui -- --routes
  */
 
 import * as readline from 'readline';
@@ -12,11 +13,12 @@ import * as http from 'http';
 // CONFIGURATION
 // ============================================
 const CONFIG = {
-  baseUrl: process.env.API_URL || 'http://localhost:3000',
+  baseUrl: process.env.API_URL || 'https://api.raastaa.app',
   token: '',
   refreshToken: '',
   userId: '',
   vendorId: '',
+  phone: '',
 };
 
 // ============================================
@@ -134,46 +136,108 @@ function printResponse(res: { status: number; data: any }) {
 // ============================================
 // AUTH MENU
 // ============================================
+
+// Quick login function for main menu
+async function quickLogin() {
+  console.log(c.header('🔑 QUICK LOGIN'));
+  const phone = await prompt('Phone (e.g., +919876543210): ');
+  
+  console.log(c.info('Requesting OTP...'));
+  const otpRes = await request('POST', '/api/auth/request-otp', { phone });
+  
+  if (otpRes.status !== 200) {
+    console.log(c.error('Failed to request OTP'));
+    printResponse(otpRes);
+    return;
+  }
+  
+  console.log(c.success('OTP sent! (Dev mode: use any 6 digits like 123456)'));
+  const otp = await prompt('Enter OTP: ');
+  
+  console.log(c.info('Verifying...'));
+  const verifyRes = await request('POST', '/api/auth/verify-otp', { phone, otp });
+  
+  if (verifyRes.status === 200 && verifyRes.data?.data?.tokens) {
+    CONFIG.token = verifyRes.data.data.tokens.accessToken;
+    CONFIG.refreshToken = verifyRes.data.data.tokens.refreshToken;
+    CONFIG.userId = verifyRes.data.data.user?.uuid || '';
+    CONFIG.phone = phone;
+    console.log(c.success(`Logged in as: ${verifyRes.data.data.user?.username || phone}`));
+    console.log(c.info(`User ID: ${CONFIG.userId}`));
+    console.log(c.info(`New User: ${verifyRes.data.data.isNewUser ? 'Yes' : 'No'}`));
+  } else {
+    console.log(c.error('Login failed'));
+    printResponse(verifyRes);
+  }
+}
+
 async function authMenu() {
   console.log(c.header('AUTHENTICATION'));
-  console.log(c.menu('1', 'Request OTP'));
-  console.log(c.menu('2', 'Verify OTP'));
-  console.log(c.menu('3', 'Refresh Token'));
-  console.log(c.menu('4', 'Logout'));
-  console.log(c.menu('5', 'View Current Token'));
+  console.log(c.menu('1', 'Quick Login (OTP - Recommended)'));
+  console.log(c.menu('2', 'Register User (Email/Password)'));
+  console.log(c.menu('3', 'Login (Email/Password)'));
+  console.log(c.menu('4', 'Refresh Token'));
+  console.log(c.menu('5', 'Logout'));
+  console.log(c.menu('6', 'View Current Token'));
+  console.log(c.menu('7', 'Check Username Availability'));
+  console.log(c.menu('8', 'Check Email Availability'));
+  console.log(c.menu('9', 'Check Phone Availability'));
   console.log(c.menu('0', 'Back'));
 
   const choice = await prompt('\nChoice: ');
 
   switch (choice) {
     case '1': {
-      const phone = await prompt('Phone number (with country code, e.g., +919876543210): ');
-      console.log(c.info('Requesting OTP...'));
-      const res = await request('POST', '/api/auth/request-otp', { phone });
-      printResponse(res);
+      await quickLogin();
       break;
     }
     case '2': {
-      const phone = await prompt('Phone number: ');
-      const otp = await prompt('OTP code: ');
-      console.log(c.info('Verifying OTP...'));
-      const res = await request('POST', '/api/auth/verify-otp', { phone, otp });
+      console.log(c.header('REGISTER USER'));
+      const email = await prompt('Email: ');
+      const phone = await prompt('Phone (+91...): ');
+      const username = await prompt('Username: ');
+      const password = await prompt('Password: ');
+      const display_name = await prompt('Display Name: ');
+      const dob = await prompt('Date of Birth (YYYY-MM-DD): ');
+      
+      const res = await request('POST', '/api/auth/register/user', {
+        email,
+        phone,
+        username,
+        password,
+        display_name,
+        dob: new Date(dob).toISOString(),
+      });
       printResponse(res);
-      if (res.data?.data?.accessToken) {
-        CONFIG.token = res.data.data.accessToken;
-        CONFIG.refreshToken = res.data.data.refreshToken;
+      if (res.data?.data?.tokens) {
+        CONFIG.token = res.data.data.tokens.accessToken;
+        CONFIG.refreshToken = res.data.data.tokens.refreshToken;
         CONFIG.userId = res.data.data.user?.uuid || '';
-        console.log(c.success('Token saved! You are now authenticated.'));
+        console.log(c.success('Registered and logged in!'));
       }
       break;
     }
     case '3': {
+      const identifier = await prompt('Email/Phone/Username: ');
+      const password = await prompt('Password: ');
+      console.log(c.info('Logging in...'));
+      const res = await request('POST', '/api/auth/login', { identifier, password });
+      printResponse(res);
+      if (res.data?.data?.tokens) {
+        CONFIG.token = res.data.data.tokens.accessToken;
+        CONFIG.refreshToken = res.data.data.tokens.refreshToken;
+        CONFIG.userId = res.data.data.user?.uuid || '';
+        console.log(c.success('Logged in!'));
+      }
+      break;
+    }
+    case '4': {
       if (!CONFIG.refreshToken) {
         console.log(c.error('No refresh token available'));
         break;
       }
       console.log(c.info('Refreshing token...'));
-      const res = await request('POST', '/api/auth/refresh', { refreshToken: CONFIG.refreshToken });
+      const res = await request('POST', '/api/auth/refresh', { refresh_token: CONFIG.refreshToken });
       printResponse(res);
       if (res.data?.data?.accessToken) {
         CONFIG.token = res.data.data.accessToken;
@@ -181,21 +245,41 @@ async function authMenu() {
       }
       break;
     }
-    case '4': {
+    case '5': {
       console.log(c.info('Logging out...'));
       const res = await request('POST', '/api/auth/logout');
       printResponse(res);
       CONFIG.token = '';
       CONFIG.refreshToken = '';
       CONFIG.userId = '';
+      CONFIG.phone = '';
       console.log(c.success('Logged out, tokens cleared'));
       break;
     }
-    case '5': {
+    case '6': {
       console.log(c.header('CURRENT SESSION'));
       console.log(`Token: ${CONFIG.token ? c.highlight(CONFIG.token.substring(0, 30) + '...') : c.dim('(none)')}`);
       console.log(`User ID: ${CONFIG.userId || c.dim('(none)')}`);
+      console.log(`Phone: ${CONFIG.phone || c.dim('(none)')}`);
       console.log(`Vendor ID: ${CONFIG.vendorId || c.dim('(none)')}`);
+      break;
+    }
+    case '7': {
+      const username = await prompt('Username to check: ');
+      const res = await request('GET', `/api/auth/check/username/${username}`);
+      printResponse(res);
+      break;
+    }
+    case '8': {
+      const email = await prompt('Email to check: ');
+      const res = await request('GET', `/api/auth/check/email?email=${encodeURIComponent(email)}`);
+      printResponse(res);
+      break;
+    }
+    case '9': {
+      const phone = await prompt('Phone to check: ');
+      const res = await request('GET', `/api/auth/check/phone?phone=${encodeURIComponent(phone)}`);
+      printResponse(res);
       break;
     }
     case '0':
@@ -1016,9 +1100,10 @@ ${colors.bright}${colors.cyan}
 ${colors.reset}
   ${c.dim('Backend API Testing TUI')}
   ${c.dim(`Connected to: ${CONFIG.baseUrl}`)}
-  ${CONFIG.token ? c.success('Authenticated') : c.warn('Not authenticated')}
+  ${CONFIG.token ? c.success(`Authenticated (${CONFIG.phone || CONFIG.userId.slice(0, 8) + '...'})`) : c.warn('Not authenticated')}
 `);
 
+  console.log(c.menu('0', '🔑 Quick Login (OTP)'));
   console.log(c.menu('1', '🔐 Authentication'));
   console.log(c.menu('2', '👤 Users'));
   console.log(c.menu('3', '🏪 Vendors'));
@@ -1031,12 +1116,16 @@ ${colors.reset}
   console.log(c.menu('A', '👑 Admin'));
   console.log(c.menu('R', '📡 Raw Request'));
   console.log(c.menu('S', '⚙️  Settings'));
+  console.log(c.menu('H', '💚 Health Check'));
   console.log(c.menu('Q', '🚪 Quit'));
 
   const choice = await prompt('\nChoice: ');
 
   try {
     switch (choice.toUpperCase()) {
+      case '0':
+        await quickLogin();
+        break;
       case '1':
         await authMenu();
         break;
@@ -1073,6 +1162,15 @@ ${colors.reset}
       case 'S':
         await settingsMenu();
         break;
+      case 'H':
+        console.log(c.info('Checking health...'));
+        const res = await request('GET', '/health');
+        if (res.status === 200) {
+          console.log(c.success(`API is healthy! Uptime: ${res.data.uptime?.toFixed(0) || 'N/A'}s`));
+        } else {
+          printResponse(res);
+        }
+        break;
       case 'Q':
         console.log(c.success('Goodbye! 👋'));
         rl.close();
@@ -1089,10 +1187,203 @@ ${colors.reset}
 }
 
 // ============================================
+// API ROUTES SUMMARY
+// ============================================
+function printApiRoutes() {
+  console.log(`
+${colors.bright}${colors.cyan}📋 RAASTAA API ROUTES SUMMARY${colors.reset}
+${colors.dim}${'═'.repeat(60)}${colors.reset}
+
+${colors.bright}${colors.magenta}🔐 AUTH (/api/auth)${colors.reset}
+  POST /request-otp         Request OTP for phone login
+  POST /verify-otp          Verify OTP & get tokens
+  POST /register/user       Register new user (email/password)
+  POST /register/vendor     Register vendor (pending approval)
+  POST /login               Login with email/phone/username
+  POST /refresh             Refresh access token
+  POST /logout              Logout
+  GET  /me                  Get current user/vendor
+  GET  /check/username/:u   Check if username available
+  GET  /check/email         Check if email available
+  GET  /check/phone         Check if phone available
+  POST /change-password     Change password
+
+${colors.bright}${colors.magenta}👤 USERS (/api/users)${colors.reset}
+  GET  /search              Search users
+  GET  /username/:username  Get user by username
+  GET  /:userId             Get user by ID
+  GET  /:userId/posts       Get user's posts
+  PATCH /me                 Update profile
+  POST /me/avatar           Upload avatar
+  GET  /me/saved            Get saved posts
+  GET  /me/referrals        Get referral stats
+  GET  /me/caps/history     Get bottle caps history
+  GET  /me/achievements     Get achievements
+  GET  /me/blocked          Get blocked users
+  POST /block               Block a user
+  DELETE /block/:userId     Unblock user
+  DELETE /me                Delete account
+
+${colors.bright}${colors.magenta}🏪 VENDORS (/api/vendors)${colors.reset}
+  GET  /search              Search vendors
+  GET  /nearby              Get nearby vendors (geo)
+  GET  /:vendorId           Get vendor details
+  GET  /:vendorId/menu      Get vendor menu
+  GET  /:vendorId/posts     Get vendor posts
+  GET  /:vendorId/ratings   Get vendor ratings
+  PATCH /me                 Update vendor profile [Vendor]
+  POST /me/photo            Upload stall photo [Vendor]
+  POST /me/go-live          Go live with location [Vendor]
+  POST /me/location         Update location [Vendor]
+  POST /me/go-offline       Go offline [Vendor]
+  GET  /me/analytics        Get analytics [Vendor]
+  POST /me/menu             Add menu item [Vendor]
+  PATCH /me/menu/:itemId    Update menu item [Vendor]
+  DELETE /me/menu/:itemId   Delete menu item [Vendor]
+
+${colors.bright}${colors.magenta}📝 POSTS (/api/posts)${colors.reset}
+  GET  /feed                Get personalized feed
+  GET  /discover            Get discover feed
+  GET  /saved               Get saved posts
+  GET  /hashtags/trending   Get trending hashtags
+  GET  /hashtags/search     Search by hashtag
+  POST /                    Create post
+  GET  /:postId             Get post
+  PATCH /:postId            Update post
+  DELETE /:postId           Delete post
+  POST /:postId/like        Like post
+  DELETE /:postId/like      Unlike post
+  POST /:postId/save        Save post
+  DELETE /:postId/save      Unsave post
+  POST /:postId/report      Report post
+
+${colors.bright}${colors.magenta}💬 COMMENTS (/api/comments)${colors.reset}
+  GET  /posts/:postId/comments  Get comments for post
+  GET  /:commentId/replies      Get replies
+  POST /                        Create comment
+  PATCH /:commentId             Update comment
+  DELETE /:commentId            Delete comment
+  POST /:commentId/like         Like comment
+  DELETE /:commentId/like       Unlike comment
+
+${colors.bright}${colors.magenta}👥 SOCIAL (/api/social)${colors.reset}
+  POST /users/follow            Follow user
+  DELETE /users/:userId/follow  Unfollow user
+  GET  /users/:userId/followers Get followers
+  GET  /users/:userId/following Get following
+  GET  /me/followers            Get my followers
+  GET  /me/following            Get my following
+  POST /vendors/follow          Follow vendor
+  DELETE /vendors/:vid/follow   Unfollow vendor
+  POST /friends/request         Send friend request
+  POST /friends/respond         Respond to request
+  GET  /friends/pending         Get pending requests
+  GET  /friends                 Get friends list
+  DELETE /friends/:friendId     Remove friend
+
+${colors.bright}${colors.magenta}🗺️ EXPEDITIONS (/api/expeditions)${colors.reset}
+  GET  /me                      Get my expeditions
+  GET  /invites                 Get pending invites
+  GET  /discover                Discover public expeditions
+  POST /                        Create expedition
+  GET  /:expeditionId           Get expedition details
+  PATCH /:expeditionId          Update expedition
+  POST /:expeditionId/publish   Publish expedition
+  POST /:expeditionId/start     Start expedition
+  POST /:expeditionId/complete  Complete expedition
+  POST /:expeditionId/cancel    Cancel expedition
+  POST /:expeditionId/check-in  Check in at vendor
+  POST /:expeditionId/invite    Invite participants
+  POST /:expeditionId/join      Request to join
+  DELETE /:expeditionId/leave   Leave expedition
+
+${colors.bright}${colors.magenta}⭐ RATINGS (/api/ratings)${colors.reset}
+  GET  /vendors/:vendorId       Get vendor ratings
+  GET  /vendors/:vendorId/stats Get vendor rating stats
+  GET  /:id                     Get rating
+  GET  /users/:userId           Get user's ratings
+  GET  /me                      Get my ratings
+  POST /                        Create rating
+  PUT  /:id                     Update rating
+  DELETE /:id                   Delete rating
+  POST /:id/helpful             Mark as helpful
+  POST /:id/report              Report rating
+
+${colors.bright}${colors.magenta}🧢 BOTTLE CAPS (/api/bottlecaps)${colors.reset}
+  GET  /leaderboard             Get leaderboard
+  GET  /balance                 Get my balance
+  GET  /transactions            Get transactions
+  GET  /rank                    Get my rank
+  GET  /daily/status            Get daily reward status
+  POST /daily/claim             Claim daily reward
+  POST /spend                   Spend bottle caps
+  POST /admin/grant             Grant caps [Admin]
+  POST /admin/deduct            Deduct caps [Admin]
+
+${colors.bright}${colors.magenta}🔔 NOTIFICATIONS (/api/notifications)${colors.reset}
+  GET  /                        Get notifications
+  GET  /unread-count            Get unread count
+  GET  /preferences             Get preferences
+  POST /mark-read               Mark as read
+  POST /mark-all-read           Mark all read
+  DELETE /                      Delete notifications
+
+${colors.bright}${colors.magenta}📤 UPLOADS (/api/uploads)${colors.reset}
+  POST /presigned-url           Get presigned URL for upload
+  POST /batch-presigned-urls    Get batch URLs
+  DELETE /                      Delete file from storage
+
+${colors.bright}${colors.magenta}🛡️ ADMIN (/api/admin)${colors.reset}
+  GET  /dashboard               Get dashboard stats
+  GET  /vendors/pending         Get pending vendors
+  POST /vendors/:vid/approve    Approve vendor
+  GET  /flags                   Get content flags
+  POST /flags/:flagId/resolve   Resolve flag
+  GET  /users                   Get all users
+  POST /users/:userId/action    User action (ban/warn/etc)
+  POST /broadcast               Send broadcast notification
+
+${colors.bright}${colors.magenta}💚 HEALTH${colors.reset}
+  GET  /health                  Health check (uptime, db, redis)
+
+${colors.dim}${'═'.repeat(60)}${colors.reset}
+${colors.cyan}Total: ~100+ endpoints across 12 modules${colors.reset}
+`);
+}
+
+// ============================================
 // ENTRY POINT
 // ============================================
+const args = process.argv.slice(2);
+
+if (args.includes('--routes') || args.includes('-r')) {
+  printApiRoutes();
+  process.exit(0);
+}
+
+if (args.includes('--help') || args.includes('-h')) {
+  console.log(`
+${colors.bright}Raastaa Backend TUI${colors.reset}
+
+Usage: npm run tui [options]
+
+Options:
+  --routes, -r    Show all API routes summary
+  --help, -h      Show this help message
+
+Environment:
+  API_URL         Set API base URL (default: https://api.raastaa.app)
+
+Examples:
+  npm run tui                    # Start interactive TUI
+  npm run tui -- --routes        # Show all API routes
+  API_URL=http://localhost:3000 npm run tui
+`);
+  process.exit(0);
+}
+
 console.log(c.info('Starting Raastaa TUI...'));
-console.log(c.dim('Tip: Set API_URL environment variable to change the server'));
+console.log(c.dim('Tip: Run with --routes to see all API endpoints'));
 console.log('');
 
 mainMenu().catch((err) => {

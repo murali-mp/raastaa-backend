@@ -163,7 +163,7 @@ Save this for your `.env` file.
 
 ```
 Key: DO00XXXXXXXXXXXXXXXXXX
-Secret: YOUR_SECRET_HERE
+Secret: YOUR_SECRET_HERE  # This will be a long string starting with dop_v1_
 ```
 
 ### Step 5.3: Configure CORS
