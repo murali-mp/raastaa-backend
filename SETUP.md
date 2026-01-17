@@ -59,8 +59,8 @@ source ~/.zshrc
 # Install PostgreSQL with PostGIS
 brew install postgresql@15 postgis
 
-# Start PostgreSQL
-brew services start postgresql@15
+    # Start PostgreSQL
+    brew services start postgresql@15
 
 # Install Redis
 brew install redis

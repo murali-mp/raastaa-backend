@@ -95,6 +95,17 @@ export const changePasswordSchema = z.object({
     .regex(/[0-9]/, 'Password must contain at least one number'),
 });
 
+// OTP Request Schema
+export const requestOtpSchema = z.object({
+  phone: z.string().regex(/^\+91[6-9]\d{9}$/, 'Invalid Indian phone number (format: +91XXXXXXXXXX)'),
+});
+
+// OTP Verify Schema  
+export const verifyOtpSchema = z.object({
+  phone: z.string().regex(/^\+91[6-9]\d{9}$/, 'Invalid Indian phone number'),
+  otp: z.string().length(6, 'OTP must be 6 digits'),
+});
+
 // Reset Password Request Schema
 export const resetPasswordRequestSchema = z.object({
   email: z.string().email().optional(),
@@ -119,5 +130,7 @@ export type RegisterVendorInput = z.infer<typeof registerVendorSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RefreshTokenInput = z.infer<typeof refreshTokenSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type RequestOtpInput = z.infer<typeof requestOtpSchema>;
+export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>;
 export type ResetPasswordRequestInput = z.infer<typeof resetPasswordRequestSchema>;
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

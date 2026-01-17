@@ -9,9 +9,26 @@ import {
   loginSchema,
   refreshTokenSchema,
   changePasswordSchema,
+  requestOtpSchema,
+  verifyOtpSchema,
 } from './auth.schema';
 
 const router = Router();
+
+// OTP routes (primary auth method)
+router.post(
+  '/request-otp',
+  authLimiter,
+  validateBody(requestOtpSchema),
+  authController.requestOtp.bind(authController)
+);
+
+router.post(
+  '/verify-otp',
+  authLimiter,
+  validateBody(verifyOtpSchema),
+  authController.verifyOtp.bind(authController)
+);
 
 // Public routes with rate limiting
 router.post(

@@ -163,7 +163,7 @@ Save this for your `.env` file.
 
 ```
 Key: DO00XXXXXXXXXXXXXXXXXX
-Secret: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+Secret: YOUR_SECRET_HERE
 ```
 
 ### Step 5.3: Configure CORS
@@ -180,8 +180,8 @@ Secret: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 ```
 Bucket: raastaa
-Endpoint: sgp1.digitaloceanspaces.com
-CDN Endpoint: raastaa.sgp1.cdn.digitaloceanspaces.com
+Endpoint: https://raastaa.sgp1.digitaloceanspaces.com
+CDN Endpoint: https://raastaa.sgp1.cdn.digitaloceanspaces.com
 ```
 
 ---
@@ -209,7 +209,7 @@ ssh-keygen -t ed25519 -C "your_email@example.com"
 
 # Copy your public key
 cat ~/.ssh/id_ed25519.pub
-
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFYuCZT1hO+I2z1Ut+IOoqke4/HAQlsk4qh5BIhWm71k muralimp25108@gmail.com
 # Add this key in DO dashboard under Settings → Security → SSH Keys
 ```
 
@@ -233,8 +233,8 @@ ssh root@143.198.XXX.XXX
 # Update packages
 apt update && apt upgrade -y
 
-# Install essential tools
-apt install -y curl wget git build-essential
+    # Install essential tools
+    apt install -y curl wget git build-essential
 ```
 
 ### Step 6.2: Create Deploy User
@@ -279,7 +279,7 @@ pm2 startup systemd -u raastaa --hp /home/raastaa
 sudo apt install -y redis-server
 
 # Configure Redis for production
-sudo nano /etc/redis/redis.conf
+
 ```
 
 Make these changes in the config:

@@ -1,6 +1,7 @@
 import bcrypt from 'bcrypt';
 import { prisma } from '../../config/database';
 import { redis } from '../../config/redis';
+import { env } from '../../config/env';
 import { generateTokenPair, verifyRefreshToken, revokeRefreshToken } from '../../middleware/auth';
 import { adminNotifications } from '../../utils/discord';
 import { generateReferralCode } from '../../utils/helpers';
@@ -10,9 +11,13 @@ import {
   RegisterVendorInput,
   LoginInput,
   ChangePasswordInput,
+  RequestOtpInput,
+  VerifyOtpInput,
 } from './auth.schema';
 
 const BCRYPT_ROUNDS = 10;
+const OTP_EXPIRY_SECONDS = 300; // 5 minutes
+const DEV_OTP = '123456'; // Fixed OTP for development
 
 export interface TokenPair {
   accessToken: string;
@@ -426,6 +431,118 @@ export class AuthService {
       select: { uuid: true },
     });
     return !user;
+  }
+
+  /**
+   * Request OTP for phone login
+   * In development: Always uses DEV_OTP (123456)
+   * In production: Would send via MSG91
+   */
+  async requestOtp(input: RequestOtpInput): Promise<{ message: string; dev_otp?: string }> {
+    const { phone } = input;
+    
+    // Generate OTP (in dev, always use fixed OTP)
+    const otp = env.NODE_ENV === 'production' 
+      ? Math.floor(100000 + Math.random() * 900000).toString()
+      : DEV_OTP;
+
+    // Store OTP in Redis with expiry
+    const otpKey = `otp:${phone}`;
+    await redis.setex(otpKey, OTP_EXPIRY_SECONDS, otp);
+
+    // In production, send via MSG91
+    if (env.NODE_ENV === 'production') {
+      // TODO: Implement MSG91 SMS sending
+      // await sendOtpViaMSG91(phone, otp);
+      return { message: 'OTP sent successfully' };
+    }
+
+    // In development, return the OTP in response
+    console.log(`[DEV] OTP for ${phone}: ${otp}`);
+    return { 
+      message: 'OTP sent successfully (dev mode)', 
+      dev_otp: otp 
+    };
+  }
+
+  /**
+   * Verify OTP and login/register user
+   * In development: Any 6-digit OTP works OR use 123456
+   */
+  async verifyOtp(input: VerifyOtpInput): Promise<AuthResult & { isNewUser: boolean }> {
+    const { phone, otp } = input;
+    
+    // In development, accept any OTP or the dev OTP
+    if (env.NODE_ENV !== 'production') {
+      // Dev mode: accept any 6-digit OTP
+      console.log(`[DEV] OTP verification bypassed for ${phone}`);
+    } else {
+      // Production: verify OTP from Redis
+      const otpKey = `otp:${phone}`;
+      const storedOtp = await redis.get(otpKey);
+      
+      if (!storedOtp || storedOtp !== otp) {
+        throw new Error('Invalid or expired OTP');
+      }
+      
+      // Delete OTP after successful verification
+      await redis.del(otpKey);
+    }
+
+    // Check if user exists
+    let user = await prisma.user.findUnique({
+      where: { phone },
+    });
+
+    let isNewUser = false;
+
+    if (!user) {
+      // Create new user with phone
+      isNewUser = true;
+      const username = `user_${phone.slice(-6)}`;
+      const profilePicture = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;
+      
+      user = await prisma.user.create({
+        data: {
+          phone,
+          username,
+          display_name: username,
+          profile_picture: profilePicture,
+          password_hash: '', // No password for OTP users
+          email: `${username}@placeholder.raastaa.app`, // Placeholder email
+          dob: new Date('2000-01-01'), // Default DOB, user can update later
+          registered_ip: '0.0.0.0', // Unknown for OTP registration
+        },
+      });
+
+      // Create referral code for new user
+      const referralCode = generateReferralCode();
+      await prisma.referralCode.create({
+        data: {
+          user_id: user.uuid,
+          code: referralCode,
+        },
+      });
+    }
+
+    if (user.account_status !== 'ACTIVE') {
+      throw new Error(`Account is ${user.account_status.toLowerCase()}`);
+    }
+
+    const tokens = await generateTokenPair({
+      uuid: user.uuid,
+      type: 'user',
+      isAdmin: user.is_admin,
+    });
+
+    // Award daily login bonus
+    await this.awardDailyLoginBonus(user.uuid);
+
+    return { 
+      user: sanitizeUser(user), 
+      tokens, 
+      isNewUser 
+    };
   }
 }
 

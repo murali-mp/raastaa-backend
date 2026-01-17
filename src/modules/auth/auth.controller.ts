@@ -218,6 +218,39 @@ export class AuthController {
       next(error);
     }
   }
+
+  /**
+   * POST /auth/request-otp
+   * Request OTP for phone login
+   */
+  async requestOtp(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await authService.requestOtp(req.body);
+      return successResponse(res, result, 200, result.message);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * POST /auth/verify-otp
+   * Verify OTP and login/register user
+   */
+  async verifyOtp(req: Request, res: Response, next: NextFunction) {
+    try {
+      const result = await authService.verifyOtp(req.body);
+      const message = result.isNewUser ? 'Account created and logged in' : 'Login successful';
+      return successResponse(res, result, 200, message);
+    } catch (error: any) {
+      if (error.message === 'Invalid or expired OTP') {
+        return unauthorizedResponse(res, 'Invalid or expired OTP');
+      }
+      if (error.message?.includes('Account is')) {
+        return errorResponse(res, error.message, 403);
+      }
+      next(error);
+    }
+  }
 }
 
 export const authController = new AuthController();
