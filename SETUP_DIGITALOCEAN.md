@@ -142,15 +142,17 @@ Save this for your `.env` file.
 
 ## 4. Set Up Spaces (S3 Storage)
 
-### Step 5.1: Create a Space
+### Step 4.1: Create a Space
 
 1. Go to **Spaces Object Storage** → **Create a Space**
 2. Configuration:
-   - **Datacenter**: Bangalore (BLR1)
+   - **Datacenter**: Singapore (SGP1) - *closest to India where Spaces is available*
    - **CDN**: ✅ Enable (for faster image loading)
    - **Name**: `raastaa` (globally unique)
    - **File Listing**: Restrict
 3. Click **Create a Space**
+
+> ⚠️ **Note**: Spaces isn't available in Bangalore. Singapore is the closest region (~3,000km). With CDN enabled, images will still load fast in India.
 
 ### Step 5.2: Generate API Keys
 
@@ -174,12 +176,12 @@ Secret: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
    - **Access Control Max Age**: `3600`
 3. Click **Save**
 
-### Step 5.4: Your Space URLs
+### Step 4.4: Your Space URLs
 
 ```
 Bucket: raastaa
-Endpoint: blr1.digitaloceanspaces.com
-CDN Endpoint: raastaa.blr1.cdn.digitaloceanspaces.com
+Endpoint: sgp1.digitaloceanspaces.com
+CDN Endpoint: raastaa.sgp1.cdn.digitaloceanspaces.com
 ```
 
 ---
@@ -380,13 +382,13 @@ JWT_ACCESS_EXPIRY=15m
 JWT_REFRESH_EXPIRY=7d
 
 # ============================================
-# DIGITAL OCEAN SPACES
+# DIGITAL OCEAN SPACES (Singapore - closest to India)
 # ============================================
 DO_SPACES_KEY=DO00XXXXXXXXXXXXXXXXXX
 DO_SPACES_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 DO_SPACES_BUCKET=raastaa
-DO_SPACES_ENDPOINT=blr1.digitaloceanspaces.com
-DO_SPACES_CDN_ENDPOINT=raastaa.blr1.cdn.digitaloceanspaces.com
+DO_SPACES_ENDPOINT=sgp1.digitaloceanspaces.com
+DO_SPACES_CDN_ENDPOINT=raastaa.sgp1.cdn.digitaloceanspaces.com
 
 # ============================================
 # RATE LIMITING
@@ -562,7 +564,7 @@ ns3.digitalocean.com
 | A | @ | YOUR_DROPLET_IP | 3600 |
 | A | api | YOUR_DROPLET_IP | 3600 |
 | A | www | YOUR_DROPLET_IP | 3600 |
-| CNAME | cdn | raastaa.blr1.cdn.digitaloceanspaces.com | 3600 |
+| CNAME | cdn | raastaa.sgp1.cdn.digitaloceanspaces.com | 3600 |
 
 ---
 
@@ -771,7 +773,7 @@ pm2 reload raastaa-api
 | API | https://api.raastaa.app |
 | Health Check | https://api.raastaa.app/health |
 | DO Dashboard | https://cloud.digitalocean.com |
-| Spaces CDN | https://raastaa.blr1.cdn.digitaloceanspaces.com |
+| Spaces CDN | https://raastaa.sgp1.cdn.digitaloceanspaces.com |
 
 ---
 
