@@ -10,6 +10,204 @@ import * as https from 'https';
 import * as http from 'http';
 
 // ============================================
+// EARLY CLI FLAGS (before readline is created)
+// ============================================
+const args = process.argv.slice(2);
+
+// Colors needed for early output
+const earlyColors = {
+  reset: '\x1b[0m',
+  bright: '\x1b[1m',
+  dim: '\x1b[2m',
+  cyan: '\x1b[36m',
+  magenta: '\x1b[35m',
+};
+
+if (args.includes('--routes') || args.includes('-r')) {
+  console.log(`
+${earlyColors.bright}${earlyColors.cyan}📋 RAASTAA API ROUTES SUMMARY${earlyColors.reset}
+${earlyColors.dim}${'═'.repeat(60)}${earlyColors.reset}
+
+${earlyColors.bright}${earlyColors.magenta}🔐 AUTH (/api/auth)${earlyColors.reset}
+  POST /request-otp         Request OTP for phone login
+  POST /verify-otp          Verify OTP & get tokens
+  POST /register/user       Register new user (email/password)
+  POST /register/vendor     Register vendor (pending approval)
+  POST /login               Login with email/phone/username
+  POST /refresh             Refresh access token
+  POST /logout              Logout
+  GET  /me                  Get current user/vendor
+  GET  /check/username/:u   Check if username available
+  GET  /check/email         Check if email available
+  GET  /check/phone         Check if phone available
+  POST /change-password     Change password
+
+${earlyColors.bright}${earlyColors.magenta}👤 USERS (/api/users)${earlyColors.reset}
+  GET  /search              Search users
+  GET  /username/:username  Get user by username
+  GET  /:userId             Get user by ID
+  GET  /:userId/posts       Get user's posts
+  PATCH /me                 Update profile
+  POST /me/avatar           Upload avatar
+  GET  /me/saved            Get saved posts
+  GET  /me/referrals        Get referral stats
+  GET  /me/caps/history     Get bottle caps history
+  GET  /me/achievements     Get achievements
+  GET  /me/blocked          Get blocked users
+  POST /block               Block a user
+  DELETE /block/:userId     Unblock user
+  DELETE /me                Delete account
+
+${earlyColors.bright}${earlyColors.magenta}🏪 VENDORS (/api/vendors)${earlyColors.reset}
+  GET  /search              Search vendors
+  GET  /nearby              Get nearby vendors (geo)
+  GET  /:vendorId           Get vendor details
+  GET  /:vendorId/menu      Get vendor menu
+  GET  /:vendorId/posts     Get vendor posts
+  GET  /:vendorId/ratings   Get vendor ratings
+  PATCH /me                 Update vendor profile [Vendor]
+  POST /me/photo            Upload stall photo [Vendor]
+  POST /me/go-live          Go live with location [Vendor]
+  POST /me/location         Update location [Vendor]
+  POST /me/go-offline       Go offline [Vendor]
+  GET  /me/analytics        Get analytics [Vendor]
+  POST /me/menu             Add menu item [Vendor]
+  PATCH /me/menu/:itemId    Update menu item [Vendor]
+  DELETE /me/menu/:itemId   Delete menu item [Vendor]
+
+${earlyColors.bright}${earlyColors.magenta}📝 POSTS (/api/posts)${earlyColors.reset}
+  GET  /feed                Get personalized feed
+  GET  /discover            Get discover feed
+  GET  /saved               Get saved posts
+  GET  /hashtags/trending   Get trending hashtags
+  GET  /hashtags/search     Search by hashtag
+  POST /                    Create post
+  GET  /:postId             Get post
+  PATCH /:postId            Update post
+  DELETE /:postId           Delete post
+  POST /:postId/like        Like post
+  DELETE /:postId/like      Unlike post
+  POST /:postId/save        Save post
+  DELETE /:postId/save      Unsave post
+  POST /:postId/report      Report post
+
+${earlyColors.bright}${earlyColors.magenta}💬 COMMENTS (/api/comments)${earlyColors.reset}
+  GET  /posts/:postId/comments  Get comments for post
+  GET  /:commentId/replies      Get replies
+  POST /                        Create comment
+  PATCH /:commentId             Update comment
+  DELETE /:commentId            Delete comment
+  POST /:commentId/like         Like comment
+  DELETE /:commentId/like       Unlike comment
+
+${earlyColors.bright}${earlyColors.magenta}👥 SOCIAL (/api/social)${earlyColors.reset}
+  POST /users/follow            Follow user
+  DELETE /users/:userId/follow  Unfollow user
+  GET  /users/:userId/followers Get followers
+  GET  /users/:userId/following Get following
+  GET  /me/followers            Get my followers
+  GET  /me/following            Get my following
+  POST /vendors/follow          Follow vendor
+  DELETE /vendors/:vid/follow   Unfollow vendor
+  POST /friends/request         Send friend request
+  POST /friends/respond         Respond to request
+  GET  /friends/pending         Get pending requests
+  GET  /friends                 Get friends list
+  DELETE /friends/:friendId     Remove friend
+
+${earlyColors.bright}${earlyColors.magenta}🗺️ EXPEDITIONS (/api/expeditions)${earlyColors.reset}
+  GET  /me                      Get my expeditions
+  GET  /invites                 Get pending invites
+  GET  /discover                Discover public expeditions
+  POST /                        Create expedition
+  GET  /:expeditionId           Get expedition details
+  PATCH /:expeditionId          Update expedition
+  POST /:expeditionId/publish   Publish expedition
+  POST /:expeditionId/start     Start expedition
+  POST /:expeditionId/complete  Complete expedition
+  POST /:expeditionId/cancel    Cancel expedition
+  POST /:expeditionId/check-in  Check in at vendor
+  POST /:expeditionId/invite    Invite participants
+  POST /:expeditionId/join      Request to join
+  DELETE /:expeditionId/leave   Leave expedition
+
+${earlyColors.bright}${earlyColors.magenta}⭐ RATINGS (/api/ratings)${earlyColors.reset}
+  GET  /vendors/:vendorId       Get vendor ratings
+  GET  /vendors/:vendorId/stats Get vendor rating stats
+  GET  /:id                     Get rating
+  GET  /users/:userId           Get user's ratings
+  GET  /me                      Get my ratings
+  POST /                        Create rating
+  PUT  /:id                     Update rating
+  DELETE /:id                   Delete rating
+  POST /:id/helpful             Mark as helpful
+  POST /:id/report              Report rating
+
+${earlyColors.bright}${earlyColors.magenta}🧢 BOTTLE CAPS (/api/bottlecaps)${earlyColors.reset}
+  GET  /leaderboard             Get leaderboard
+  GET  /balance                 Get my balance
+  GET  /transactions            Get transactions
+  GET  /rank                    Get my rank
+  GET  /daily/status            Get daily reward status
+  POST /daily/claim             Claim daily reward
+  POST /spend                   Spend bottle caps
+  POST /admin/grant             Grant caps [Admin]
+  POST /admin/deduct            Deduct caps [Admin]
+
+${earlyColors.bright}${earlyColors.magenta}🔔 NOTIFICATIONS (/api/notifications)${earlyColors.reset}
+  GET  /                        Get notifications
+  GET  /unread-count            Get unread count
+  GET  /preferences             Get preferences
+  POST /mark-read               Mark as read
+  POST /mark-all-read           Mark all read
+  DELETE /                      Delete notifications
+
+${earlyColors.bright}${earlyColors.magenta}📤 UPLOADS (/api/uploads)${earlyColors.reset}
+  POST /presigned-url           Get presigned URL
+  POST /batch-presigned-urls    Get batch URLs
+  DELETE /                      Delete file
+
+${earlyColors.bright}${earlyColors.magenta}🛡️ ADMIN (/api/admin)${earlyColors.reset}
+  GET  /dashboard               Get dashboard stats
+  GET  /vendors/pending         Get pending vendors
+  POST /vendors/:vid/approve    Approve vendor
+  GET  /flags                   Get content flags
+  POST /flags/:flagId/resolve   Resolve flag
+  GET  /users                   Get all users
+  POST /users/:userId/action    User action (ban/warn)
+  POST /broadcast               Send broadcast
+
+${earlyColors.bright}${earlyColors.magenta}💚 HEALTH${earlyColors.reset}
+  GET  /health                  Health check (uptime, db, redis)
+
+${earlyColors.dim}${'═'.repeat(60)}${earlyColors.reset}
+${earlyColors.cyan}Total: ~100+ endpoints across 12 modules${earlyColors.reset}
+`);
+  process.exit(0);
+}
+
+if (args.includes('--help') || args.includes('-h')) {
+  console.log(`
+${earlyColors.bright}Raastaa Backend TUI${earlyColors.reset}
+
+Usage: npm run tui [options]
+
+Options:
+  --routes, -r    Show all API routes summary
+  --help, -h      Show this help message
+
+Environment:
+  API_URL         Set API base URL (default: https://api.raastaa.app)
+
+Examples:
+  npm run tui                    # Start interactive TUI
+  npm run tui -- --routes        # Show all API routes
+  API_URL=http://localhost:3000 npm run tui
+`);
+  process.exit(0);
+}
+
+// ============================================
 // CONFIGURATION
 // ============================================
 const CONFIG = {
@@ -1187,201 +1385,8 @@ ${colors.reset}
 }
 
 // ============================================
-// API ROUTES SUMMARY
-// ============================================
-function printApiRoutes() {
-  console.log(`
-${colors.bright}${colors.cyan}📋 RAASTAA API ROUTES SUMMARY${colors.reset}
-${colors.dim}${'═'.repeat(60)}${colors.reset}
-
-${colors.bright}${colors.magenta}🔐 AUTH (/api/auth)${colors.reset}
-  POST /request-otp         Request OTP for phone login
-  POST /verify-otp          Verify OTP & get tokens
-  POST /register/user       Register new user (email/password)
-  POST /register/vendor     Register vendor (pending approval)
-  POST /login               Login with email/phone/username
-  POST /refresh             Refresh access token
-  POST /logout              Logout
-  GET  /me                  Get current user/vendor
-  GET  /check/username/:u   Check if username available
-  GET  /check/email         Check if email available
-  GET  /check/phone         Check if phone available
-  POST /change-password     Change password
-
-${colors.bright}${colors.magenta}👤 USERS (/api/users)${colors.reset}
-  GET  /search              Search users
-  GET  /username/:username  Get user by username
-  GET  /:userId             Get user by ID
-  GET  /:userId/posts       Get user's posts
-  PATCH /me                 Update profile
-  POST /me/avatar           Upload avatar
-  GET  /me/saved            Get saved posts
-  GET  /me/referrals        Get referral stats
-  GET  /me/caps/history     Get bottle caps history
-  GET  /me/achievements     Get achievements
-  GET  /me/blocked          Get blocked users
-  POST /block               Block a user
-  DELETE /block/:userId     Unblock user
-  DELETE /me                Delete account
-
-${colors.bright}${colors.magenta}🏪 VENDORS (/api/vendors)${colors.reset}
-  GET  /search              Search vendors
-  GET  /nearby              Get nearby vendors (geo)
-  GET  /:vendorId           Get vendor details
-  GET  /:vendorId/menu      Get vendor menu
-  GET  /:vendorId/posts     Get vendor posts
-  GET  /:vendorId/ratings   Get vendor ratings
-  PATCH /me                 Update vendor profile [Vendor]
-  POST /me/photo            Upload stall photo [Vendor]
-  POST /me/go-live          Go live with location [Vendor]
-  POST /me/location         Update location [Vendor]
-  POST /me/go-offline       Go offline [Vendor]
-  GET  /me/analytics        Get analytics [Vendor]
-  POST /me/menu             Add menu item [Vendor]
-  PATCH /me/menu/:itemId    Update menu item [Vendor]
-  DELETE /me/menu/:itemId   Delete menu item [Vendor]
-
-${colors.bright}${colors.magenta}📝 POSTS (/api/posts)${colors.reset}
-  GET  /feed                Get personalized feed
-  GET  /discover            Get discover feed
-  GET  /saved               Get saved posts
-  GET  /hashtags/trending   Get trending hashtags
-  GET  /hashtags/search     Search by hashtag
-  POST /                    Create post
-  GET  /:postId             Get post
-  PATCH /:postId            Update post
-  DELETE /:postId           Delete post
-  POST /:postId/like        Like post
-  DELETE /:postId/like      Unlike post
-  POST /:postId/save        Save post
-  DELETE /:postId/save      Unsave post
-  POST /:postId/report      Report post
-
-${colors.bright}${colors.magenta}💬 COMMENTS (/api/comments)${colors.reset}
-  GET  /posts/:postId/comments  Get comments for post
-  GET  /:commentId/replies      Get replies
-  POST /                        Create comment
-  PATCH /:commentId             Update comment
-  DELETE /:commentId            Delete comment
-  POST /:commentId/like         Like comment
-  DELETE /:commentId/like       Unlike comment
-
-${colors.bright}${colors.magenta}👥 SOCIAL (/api/social)${colors.reset}
-  POST /users/follow            Follow user
-  DELETE /users/:userId/follow  Unfollow user
-  GET  /users/:userId/followers Get followers
-  GET  /users/:userId/following Get following
-  GET  /me/followers            Get my followers
-  GET  /me/following            Get my following
-  POST /vendors/follow          Follow vendor
-  DELETE /vendors/:vid/follow   Unfollow vendor
-  POST /friends/request         Send friend request
-  POST /friends/respond         Respond to request
-  GET  /friends/pending         Get pending requests
-  GET  /friends                 Get friends list
-  DELETE /friends/:friendId     Remove friend
-
-${colors.bright}${colors.magenta}🗺️ EXPEDITIONS (/api/expeditions)${colors.reset}
-  GET  /me                      Get my expeditions
-  GET  /invites                 Get pending invites
-  GET  /discover                Discover public expeditions
-  POST /                        Create expedition
-  GET  /:expeditionId           Get expedition details
-  PATCH /:expeditionId          Update expedition
-  POST /:expeditionId/publish   Publish expedition
-  POST /:expeditionId/start     Start expedition
-  POST /:expeditionId/complete  Complete expedition
-  POST /:expeditionId/cancel    Cancel expedition
-  POST /:expeditionId/check-in  Check in at vendor
-  POST /:expeditionId/invite    Invite participants
-  POST /:expeditionId/join      Request to join
-  DELETE /:expeditionId/leave   Leave expedition
-
-${colors.bright}${colors.magenta}⭐ RATINGS (/api/ratings)${colors.reset}
-  GET  /vendors/:vendorId       Get vendor ratings
-  GET  /vendors/:vendorId/stats Get vendor rating stats
-  GET  /:id                     Get rating
-  GET  /users/:userId           Get user's ratings
-  GET  /me                      Get my ratings
-  POST /                        Create rating
-  PUT  /:id                     Update rating
-  DELETE /:id                   Delete rating
-  POST /:id/helpful             Mark as helpful
-  POST /:id/report              Report rating
-
-${colors.bright}${colors.magenta}🧢 BOTTLE CAPS (/api/bottlecaps)${colors.reset}
-  GET  /leaderboard             Get leaderboard
-  GET  /balance                 Get my balance
-  GET  /transactions            Get transactions
-  GET  /rank                    Get my rank
-  GET  /daily/status            Get daily reward status
-  POST /daily/claim             Claim daily reward
-  POST /spend                   Spend bottle caps
-  POST /admin/grant             Grant caps [Admin]
-  POST /admin/deduct            Deduct caps [Admin]
-
-${colors.bright}${colors.magenta}🔔 NOTIFICATIONS (/api/notifications)${colors.reset}
-  GET  /                        Get notifications
-  GET  /unread-count            Get unread count
-  GET  /preferences             Get preferences
-  POST /mark-read               Mark as read
-  POST /mark-all-read           Mark all read
-  DELETE /                      Delete notifications
-
-${colors.bright}${colors.magenta}📤 UPLOADS (/api/uploads)${colors.reset}
-  POST /presigned-url           Get presigned URL for upload
-  POST /batch-presigned-urls    Get batch URLs
-  DELETE /                      Delete file from storage
-
-${colors.bright}${colors.magenta}🛡️ ADMIN (/api/admin)${colors.reset}
-  GET  /dashboard               Get dashboard stats
-  GET  /vendors/pending         Get pending vendors
-  POST /vendors/:vid/approve    Approve vendor
-  GET  /flags                   Get content flags
-  POST /flags/:flagId/resolve   Resolve flag
-  GET  /users                   Get all users
-  POST /users/:userId/action    User action (ban/warn/etc)
-  POST /broadcast               Send broadcast notification
-
-${colors.bright}${colors.magenta}💚 HEALTH${colors.reset}
-  GET  /health                  Health check (uptime, db, redis)
-
-${colors.dim}${'═'.repeat(60)}${colors.reset}
-${colors.cyan}Total: ~100+ endpoints across 12 modules${colors.reset}
-`);
-}
-
-// ============================================
 // ENTRY POINT
 // ============================================
-const args = process.argv.slice(2);
-
-if (args.includes('--routes') || args.includes('-r')) {
-  printApiRoutes();
-  process.exit(0);
-}
-
-if (args.includes('--help') || args.includes('-h')) {
-  console.log(`
-${colors.bright}Raastaa Backend TUI${colors.reset}
-
-Usage: npm run tui [options]
-
-Options:
-  --routes, -r    Show all API routes summary
-  --help, -h      Show this help message
-
-Environment:
-  API_URL         Set API base URL (default: https://api.raastaa.app)
-
-Examples:
-  npm run tui                    # Start interactive TUI
-  npm run tui -- --routes        # Show all API routes
-  API_URL=http://localhost:3000 npm run tui
-`);
-  process.exit(0);
-}
-
 console.log(c.info('Starting Raastaa TUI...'));
 console.log(c.dim('Tip: Run with --routes to see all API endpoints'));
 console.log('');
