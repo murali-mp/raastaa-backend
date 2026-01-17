@@ -9,15 +9,14 @@ Complete guide to deploy Raastaa backend on Digital Ocean infrastructure.
 1. [Overview & Costs](#1-overview--costs)
 2. [Create Digital Ocean Account](#2-create-digital-ocean-account)
 3. [Set Up Managed PostgreSQL](#3-set-up-managed-postgresql)
-4. [Set Up Managed Redis](#4-set-up-managed-redis)
-5. [Set Up Spaces (S3 Storage)](#5-set-up-spaces-s3-storage)
-6. [Create Droplet (Server)](#6-create-droplet-server)
-7. [Server Setup & Dependencies](#7-server-setup--dependencies)
-8. [Deploy the Application](#8-deploy-the-application)
-9. [Set Up Nginx & SSL](#9-set-up-nginx--ssl)
-10. [Domain & DNS Setup](#10-domain--dns-setup)
-11. [Monitoring & Maintenance](#11-monitoring--maintenance)
-12. [Troubleshooting](#12-troubleshooting)
+4. [Set Up Spaces (S3 Storage)](#4-set-up-spaces-s3-storage)
+5. [Create Droplet (Server)](#5-create-droplet-server)
+6. [Server Setup & Dependencies](#6-server-setup--dependencies)
+7. [Deploy the Application](#7-deploy-the-application)
+8. [Set Up Nginx & SSL](#8-set-up-nginx--ssl)
+9. [Domain & DNS Setup](#9-domain--dns-setup)
+10. [Monitoring & Maintenance](#10-monitoring--maintenance)
+11. [Troubleshooting](#11-troubleshooting)
 
 ---
 
@@ -32,18 +31,18 @@ Complete guide to deploy Raastaa backend on Digital Ocean infrastructure.
                     └────────┬────────┘
                              │
                     ┌────────▼────────┐
-                    │  DO Droplet     │
-                    │  (Node.js API)  │
-                    │  nginx + PM2    │
+                    │   DO Droplet    │
+                    │  Node.js + PM2  │
+                    │  Nginx + Redis  │
                     └────────┬────────┘
                              │
-        ┌────────────────────┼────────────────────┐
-        │                    │                    │
-┌───────▼───────┐   ┌───────▼───────┐   ┌───────▼───────┐
-│ DO Managed    │   │ DO Managed    │   │ DO Spaces     │
-│ PostgreSQL    │   │ Redis         │   │ (Images/CDN)  │
-│ + PostGIS     │   │               │   │               │
-└───────────────┘   └───────────────┘   └───────────────┘
+             ┌───────────────┴───────────────┐
+             │                               │
+     ┌───────▼───────┐               ┌───────▼───────┐
+     │ DO Managed    │               │ DO Spaces     │
+     │ PostgreSQL    │               │ (Images/CDN)  │
+     │ + PostGIS     │               │               │
+     └───────────────┘               └───────────────┘
 ```
 
 ### Monthly Cost Estimate (India - BLR1)
@@ -52,11 +51,13 @@ Complete guide to deploy Raastaa backend on Digital Ocean infrastructure.
 |---------|------|------------|
 | Droplet | 2 vCPU, 4GB RAM | $24 (~₹2,000) |
 | Managed PostgreSQL | 1GB RAM, 10GB disk | $15 (~₹1,250) |
-| Managed Redis | 1GB RAM | $15 (~₹1,250) |
+| Redis | On Droplet | **FREE** |
 | Spaces | 250GB + CDN | $5 (~₹400) |
-| **Total** | | **~$59/month (~₹4,900)** |
+| **Total** | | **~$44/month (~₹3,650)** |
 
 > 💡 **Tip**: Start with Basic Droplet ($12/mo) for MVP, scale up later.
+> 
+> 💡 **Why Redis on Droplet?** Saves $15/mo, zero latency (same machine), and plenty of RAM for caching at your scale.
 
 ---
 
@@ -92,6 +93,7 @@ Complete guide to deploy Raastaa backend on Digital Ocean infrastructure.
 4. Click **Create Database Cluster**
 5. Wait 5-10 minutes for provisioning
 
+YOU"RE HERE
 ### Step 3.2: Enable PostGIS Extension
 
 1. Once cluster is ready, go to **Settings** → **Trusted Sources**
@@ -138,32 +140,7 @@ Save this for your `.env` file.
 
 ---
 
-## 4. Set Up Managed Redis
-
-### Step 4.1: Create Redis Cluster
-
-1. Go to **Databases** → **Create Database Cluster**
-2. Choose **Redis** (version 7)
-3. Configuration:
-   - **Datacenter**: Bangalore (BLR1) - same as PostgreSQL
-   - **Plan**: Basic → $15/mo (1 GB RAM)
-   - **Cluster name**: `raastaa-redis`
-4. Click **Create Database Cluster**
-5. Wait 3-5 minutes for provisioning
-
-### Step 4.2: Get Connection String
-
-From the dashboard, copy the connection details:
-
-```
-rediss://default:AVNS_xxxxx@raastaa-redis-do-user-xxxxx-0.b.db.ondigitalocean.com:25061
-```
-
-> ⚠️ Note: It's `rediss://` (with double s) for TLS connection
-
----
-
-## 5. Set Up Spaces (S3 Storage)
+## 4. Set Up Spaces (S3 Storage)
 
 ### Step 5.1: Create a Space
 
@@ -207,9 +184,9 @@ CDN Endpoint: raastaa.blr1.cdn.digitaloceanspaces.com
 
 ---
 
-## 6. Create Droplet (Server)
+## 5. Create Droplet (Server)
 
-### Step 6.1: Create Droplet
+### Step 5.1: Create Droplet
 
 1. Go to **Droplets** → **Create Droplet**
 2. Configuration:
@@ -220,7 +197,7 @@ CDN Endpoint: raastaa.blr1.cdn.digitaloceanspaces.com
    - **Hostname**: `raastaa-api`
 3. Click **Create Droplet**
 
-### Step 6.2: Add SSH Key (if not already)
+### Step 5.2: Add SSH Key (if not already)
 
 On your local machine:
 
@@ -234,7 +211,7 @@ cat ~/.ssh/id_ed25519.pub
 # Add this key in DO dashboard under Settings → Security → SSH Keys
 ```
 
-### Step 6.3: Connect to Droplet
+### Step 5.3: Connect to Droplet
 
 ```bash
 # Get the IP from the dashboard
@@ -246,9 +223,9 @@ ssh root@143.198.XXX.XXX
 
 ---
 
-## 7. Server Setup & Dependencies
+## 6. Server Setup & Dependencies
 
-### Step 7.1: Update System
+### Step 6.1: Update System
 
 ```bash
 # Update packages
@@ -258,7 +235,7 @@ apt update && apt upgrade -y
 apt install -y curl wget git build-essential
 ```
 
-### Step 7.2: Create Deploy User
+### Step 6.2: Create Deploy User
 
 ```bash
 # Create a non-root user
@@ -271,7 +248,7 @@ usermod -aG sudo raastaa
 su - raastaa
 ```
 
-### Step 7.3: Install Node.js 20
+### Step 6.3: Install Node.js 20
 
 ```bash
 # Install Node.js via NodeSource
@@ -283,7 +260,7 @@ node --version  # Should be v20.x
 npm --version   # Should be v10.x
 ```
 
-### Step 7.4: Install PM2 (Process Manager)
+### Step 6.4: Install PM2 (Process Manager)
 
 ```bash
 # Install PM2 globally
@@ -293,7 +270,40 @@ sudo npm install -g pm2
 pm2 startup systemd -u raastaa --hp /home/raastaa
 ```
 
-### Step 7.5: Install Nginx
+### Step 6.5: Install Redis
+
+```bash
+# Install Redis
+sudo apt install -y redis-server
+
+# Configure Redis for production
+sudo nano /etc/redis/redis.conf
+```
+
+Make these changes in the config:
+```
+# Change supervised to systemd
+supervised systemd
+
+# Set max memory (adjust based on your Droplet RAM)
+maxmemory 512mb
+maxmemory-policy allkeys-lru
+
+# Bind to localhost only (security)
+bind 127.0.0.1 ::1
+```
+
+Save and restart:
+```bash
+sudo systemctl restart redis-server
+sudo systemctl enable redis-server
+
+# Verify Redis is running
+redis-cli ping
+# Should return: PONG
+```
+
+### Step 6.6: Install Nginx
 
 ```bash
 sudo apt install -y nginx
@@ -303,7 +313,7 @@ sudo systemctl start nginx
 sudo systemctl enable nginx
 ```
 
-### Step 7.6: Configure Firewall
+### Step 6.7: Configure Firewall
 
 ```bash
 # Allow SSH, HTTP, HTTPS
@@ -317,26 +327,26 @@ sudo ufw status
 
 ---
 
-## 8. Deploy the Application
+## 7. Deploy the Application
 
-### Step 8.1: Clone Repository
+### Step 7.1: Clone Repository
 
 ```bash
 # As raastaa user
 cd /home/raastaa
 
-# Clone your repo (replace with your actual repo)
-git clone https://github.com/yourusername/raastaa-backend.git
+# Clone your repo
+git clone https://github.com/murali-mp/raastaa-backend.git
 cd raastaa-backend
 ```
 
-### Step 8.2: Install Dependencies
+### Step 7.2: Install Dependencies
 
 ```bash
 npm install
 ```
 
-### Step 8.3: Create Environment File
+### Step 7.3: Create Environment File
 
 ```bash
 nano .env
@@ -358,9 +368,9 @@ DATABASE_URL="postgresql://doadmin:YOUR_PASSWORD@raastaa-db-do-user-XXXXX-0.b.db
 DIRECT_URL="postgresql://doadmin:YOUR_PASSWORD@raastaa-db-do-user-XXXXX-0.b.db.ondigitalocean.com:25060/raastaa?sslmode=require"
 
 # ============================================
-# REDIS (Digital Ocean Managed Redis)
+# REDIS (On Droplet - localhost)
 # ============================================
-REDIS_URL="rediss://default:YOUR_PASSWORD@raastaa-redis-do-user-XXXXX-0.b.db.ondigitalocean.com:25061"
+REDIS_URL="redis://localhost:6379"
 
 # ============================================
 # JWT (Generate secure secrets!)
@@ -407,7 +417,7 @@ DISCORD_ADMIN_WEBHOOK=https://discord.com/api/webhooks/xxx/xxx
 
 Save with `Ctrl+X`, then `Y`, then `Enter`.
 
-### Step 8.4: Generate Prisma Client & Migrate
+### Step 7.4: Generate Prisma Client & Migrate
 
 ```bash
 # Generate Prisma client
@@ -417,13 +427,13 @@ npx prisma generate
 npx prisma migrate deploy
 ```
 
-### Step 8.5: Build Application
+### Step 7.5: Build Application
 
 ```bash
 npm run build
 ```
 
-### Step 8.6: Start with PM2
+### Step 7.6: Start with PM2
 
 ```bash
 # Start the application
@@ -439,9 +449,9 @@ pm2 logs raastaa-api
 
 ---
 
-## 9. Set Up Nginx & SSL
+## 8. Set Up Nginx & SSL
 
-### Step 9.1: Configure Nginx
+### Step 8.1: Configure Nginx
 
 ```bash
 sudo nano /etc/nginx/sites-available/raastaa
@@ -499,7 +509,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-### Step 9.3: Install SSL with Certbot
+### Step 8.3: Install SSL with Certbot
 
 ```bash
 # Install Certbot
@@ -514,7 +524,7 @@ sudo certbot --nginx -d api.raastaa.app
 # - Choose to redirect HTTP to HTTPS (recommended)
 ```
 
-### Step 9.4: Auto-Renewal
+### Step 8.4: Auto-Renewal
 
 ```bash
 # Test auto-renewal
@@ -525,9 +535,9 @@ sudo certbot renew --dry-run
 
 ---
 
-## 10. Domain & DNS Setup
+## 9. Domain & DNS Setup
 
-### Step 10.1: Add Domain to Digital Ocean
+### Step 9.1: Add Domain to Digital Ocean
 
 1. Go to **Networking** → **Domains**
 2. Add your domain: `raastaa.app`
@@ -536,7 +546,7 @@ sudo certbot renew --dry-run
    - **Will Direct To**: Your Droplet
    - **TTL**: 3600
 
-### Step 10.2: Update Nameservers (at your registrar)
+### Step 9.2: Update Nameservers (at your registrar)
 
 Point your domain to DO nameservers:
 ```
@@ -545,7 +555,7 @@ ns2.digitalocean.com
 ns3.digitalocean.com
 ```
 
-### Step 10.3: Recommended DNS Records
+### Step 9.3: Recommended DNS Records
 
 | Type | Hostname | Value | TTL |
 |------|----------|-------|-----|
@@ -556,9 +566,9 @@ ns3.digitalocean.com
 
 ---
 
-## 11. Monitoring & Maintenance
+## 10. Monitoring & Maintenance
 
-### Step 11.1: Digital Ocean Monitoring
+### Step 10.1: Digital Ocean Monitoring
 
 1. Go to your Droplet → **Graphs**
 2. Enable **Monitoring** (free)
@@ -567,7 +577,7 @@ ns3.digitalocean.com
    - Memory > 80% for 5 min
    - Disk > 90%
 
-### Step 11.2: PM2 Monitoring
+### Step 10.2: PM2 Monitoring
 
 ```bash
 # Real-time monitoring
@@ -580,7 +590,7 @@ pm2 logs raastaa-api --lines 100
 pm2 status
 ```
 
-### Step 11.3: Useful Commands
+### Step 10.3: Useful Commands
 
 ```bash
 # Restart app
@@ -602,7 +612,7 @@ sudo systemctl status nginx
 sudo tail -f /var/log/nginx/error.log
 ```
 
-### Step 11.4: Update Deployment
+### Step 10.4: Update Deployment
 
 ```bash
 # SSH into server
@@ -627,7 +637,7 @@ npm run build
 pm2 reload raastaa-api
 ```
 
-### Step 11.5: Automated Backups
+### Step 10.5: Automated Backups
 
 Digital Ocean provides:
 - **Database Backups**: Enabled by default on Managed Databases
@@ -636,7 +646,7 @@ Digital Ocean provides:
 
 ---
 
-## 12. Troubleshooting
+## 11. Troubleshooting
 
 ### Issue: "Connection refused" to database
 
@@ -649,11 +659,21 @@ Digital Ocean provides:
 psql "YOUR_DATABASE_URL"
 ```
 
-### Issue: "SSL routines" Redis error
+### Issue: Redis connection refused
 
 ```bash
-# Make sure you're using rediss:// (with double s) for TLS
-# Check your REDIS_URL in .env
+# Check Redis is running
+sudo systemctl status redis-server
+
+# Start if not running
+sudo systemctl start redis-server
+
+# Test connection
+redis-cli ping
+# Should return: PONG
+
+# Check Redis logs
+sudo tail -f /var/log/redis/redis-server.log
 ```
 
 ### Issue: PM2 app keeps crashing
@@ -721,6 +741,10 @@ pm2 status
 pm2 restart raastaa-api
 pm2 logs raastaa-api
 
+# Redis
+sudo systemctl status redis-server
+redis-cli ping
+
 # Web Server
 sudo systemctl status nginx
 sudo systemctl restart nginx
@@ -756,11 +780,11 @@ pm2 reload raastaa-api
 - [ ] Digital Ocean account created
 - [ ] Managed PostgreSQL cluster running
 - [ ] PostGIS extension enabled
-- [ ] Managed Redis cluster running
 - [ ] Spaces bucket created with CDN
 - [ ] Spaces API keys generated
 - [ ] Droplet created and accessible via SSH
 - [ ] Node.js 20 installed on Droplet
+- [ ] Redis installed on Droplet
 - [ ] PM2 installed and configured
 - [ ] Application deployed and running
 - [ ] Nginx configured as reverse proxy
